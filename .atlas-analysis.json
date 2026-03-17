@@ -1,0 +1,100 @@
+{
+  "projectType": "saas",
+  "projectName": "Mais Hábito",
+  "projectDescription": "A gamified web application for building consistent habits through challenges, daily tasks, streaks, and an XP-based progression system.",
+  "theme": "almond",
+  "primaryColor": "#fbc926",
+  "lightColor": "#8c73fa",
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Overview",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": ["introduction", "getting-started/quickstart", "getting-started/environment-setup"]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/gamification",
+              "concepts/challenges",
+              "concepts/tasks",
+              "concepts/dashboard"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Features",
+        "groups": [
+          {
+            "group": "Authentication",
+            "pages": ["features/authentication/overview", "features/authentication/login", "features/authentication/signup"]
+          },
+          {
+            "group": "Challenges",
+            "pages": ["features/challenges/overview", "features/challenges/templates", "features/challenges/active-challenges", "features/challenges/notes"]
+          },
+          {
+            "group": "Tasks",
+            "pages": ["features/tasks/overview", "features/tasks/creating-tasks", "features/tasks/completing-tasks"]
+          },
+          {
+            "group": "Dashboard & Profile",
+            "pages": ["features/dashboard", "features/profile"]
+          }
+        ]
+      },
+      {
+        "tab": "Architecture",
+        "groups": [
+          {
+            "group": "Project Structure",
+            "pages": ["architecture/overview", "architecture/folder-structure", "architecture/routing"]
+          },
+          {
+            "group": "State Management",
+            "pages": ["architecture/state-management", "architecture/api-integration"]
+          },
+          {
+            "group": "Styling",
+            "pages": ["architecture/theming", "architecture/styled-components"]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Gamified dashboard with XP, levels, and daily streaks",
+    "Challenge catalog with customizable templates and duration tracking",
+    "Daily task management with CRUD and completion tracking",
+    "Progress journal (notes) for active challenges",
+    "JWT-based authentication with session management",
+    "Dark and light theme support",
+    "Responsive layout for mobile and desktop",
+    "Zustand global state management",
+    "Zod + React Hook Form validation"
+  ],
+  "publicApiSurface": [
+    "authService.login(email, password)",
+    "authService.signup(name, email, password)",
+    "challengeService.listTemplates()",
+    "challengeService.createTemplate({ title, description, duration_days })",
+    "challengeService.deleteTemplate(id)",
+    "challengeService.acceptChallenge(templateId)",
+    "challengeService.getActiveChallenge()",
+    "challengeService.listMyChallenges()",
+    "challengeService.completeChallenge(id)",
+    "challengeService.abandonChallenge(id)",
+    "challengeService.updateNotes(id, notes)",
+    "taskService.createTask(data: CreateTaskData)",
+    "taskService.listMyTasks()",
+    "taskService.updateTask(taskId, data: UpdateTaskData)",
+    "taskService.deleteTask(taskId)",
+    "taskService.completeTask(taskId, photoUrl?)",
+    "userService.getProfile()",
+    "userService.updateProfile(data: UpdateProfileData)"
+  ]
+}

@@ -1,0 +1,121 @@
+---
+title: "Authentication overview"
+description: "How Mais Hábito handles user identity, session persistence, and route protection using JWT and Zustand."
+---
+
+Mais Hábito uses JSON Web Tokens (JWT) for authentication. When you log in or sign up, the server returns a JWT that the app stores in `localStorage` and attaches to every subsequent API request. If the token is missing or invalid, you are redirected back to the home page.
+
+## How JWT authentication works
+
+Every request to a protected endpoint includes an `Authorization: Bearer <token>` header. The axios instance in `src/services/api.ts` adds this header automatically via a request interceptor, so you never need to attach it manually in feature code.
+
+```typescript
+// src/services/api.ts
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
+```
+
+## authStore — global auth state
+
+The `useAuthStore` hook (Zustand) is the single source of truth for authentication state across the app. It is initialized from `localStorage` on page load, so the session survives a browser refresh.
+
+```typescript
+// src/store/authStore.ts
+export const useAuthStore = create<AuthState>((set) => ({
+  user: getInitialUser(),       // parsed from localStorage 'user'
+  token: getInitialToken(),     // from localStorage 'token'
+  isAuthenticated: !!getInitialToken(),
+
+  setAuth: (user: User, token: string) => {
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
+    set({ user, token, isAuthenticated: true });
+  },
+
+  logout: () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    sessionStorage.removeItem('_up');
+    set({ user: null, token: null, isAuthenticated: false });
+  },
+}));
+```
+
+The store exposes the following state and actions:
+
+| Key | Type | Description |
+|---|---|---|
+| `user` | `User \| null` | Authenticated user object (`id`, `email`, `name`) |
+| `token` | `string \| null` | Raw JWT string |
+| `isAuthenticated` | `boolean` | `true` when a valid token exists in storage |
+| `setAuth` | `(user, token) => void` | Persists credentials to `localStorage` and updates store |
+| `logout` | `() => void` | Clears all stored credentials and resets state |
+
+## Session persistence
+
+Both `token` and `user` are persisted in `localStorage`. When the app loads, `authStore` reads these values and initializes `isAuthenticated` accordingly — you stay logged in across page refreshes and new tabs.
+
+<Note>
+  The `_up` key in `sessionStorage` is cleared on logout and on 401 responses. It is not used for authentication — only for display purposes on the profile page.
+</Note>
+
+## 401 error handling
+
+The axios response interceptor listens for `401 Unauthorized` responses. When one is detected outside of the auth pages (`/`, `/login`, `/signup`), it removes the stored credentials and redirects you to the home page.
+
+```typescript
+// src/services/api.ts
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      const path = window.location.pathname;
+      const isAuthPage = path === "/login" || path === "/signup" || path === "/";
+      if (!isAuthPage) {
+        localStorage.removeItem("token");
+        sessionStorage.removeItem("_up");
+        window.location.href = "/";
+      }
+    }
+    return Promise.reject(error);
+  },
+);
+```
+
+On auth pages, the interceptor does **not** redirect — it lets the form show the error message returned by the server.
+
+## Public routes vs private routes
+
+Route protection is handled in `src/routes/AppRoutes.tsx` with two wrapper components:
+
+- **`PublicRoute`** — wraps `/`, `/login`, and `/signup`. Redirects authenticated users to `/dashboard`.
+- **`PrivateRoute`** — wraps all app pages. Redirects unauthenticated users to `/`.
+
+| Route | Type | Redirect if wrong state |
+|---|---|---|
+| `/` | Public | → `/dashboard` if authenticated |
+| `/login` | Public | → `/dashboard` if authenticated |
+| `/signup` | Public | → `/dashboard` if authenticated |
+| `/dashboard` | Private | → `/` if unauthenticated |
+| `/challenges` | Private | → `/` if unauthenticated |
+| `/tasks` | Private | → `/` if unauthenticated |
+| `/profile` | Private | → `/` if unauthenticated |
+
+## Explore authentication flows
+
+<Columns cols={2}>
+  <Card title="Login" icon="arrow-right-to-bracket" href="/features/authentication/login">
+    Sign in with email and password to access your account.
+  </Card>
+  <Card title="Sign up" icon="user-plus" href="/features/authentication/signup">
+    Create a new account and get started immediately.
+  </Card>
+</Columns>

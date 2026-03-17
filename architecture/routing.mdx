@@ -1,0 +1,143 @@
+---
+title: "Routing"
+description: "React Router DOM 7 route definitions, authentication guards, and the PrivateLayout wrapper."
+---
+
+Mais Hábito uses **React Router DOM 7** with a declarative `<Routes>` / `<Route>` tree defined in `src/routes/AppRoutes.tsx`. The `App` component wraps everything in a `<BrowserRouter>`.
+
+## Entry point
+
+```tsx
+// src/App.tsx
+import { BrowserRouter } from 'react-router-dom';
+import AppRoutes from './routes/AppRoutes';
+import ErrorBoundary from './components/ErrorBoundary';
+
+function App() {
+  return (
+    <BrowserRouter>
+      <ErrorBoundary>
+        <AppRoutes />
+      </ErrorBoundary>
+    </BrowserRouter>
+  );
+}
+```
+
+## Route table
+
+| Path | Component | Guard |
+|---|---|---|
+| `/` | `HomePage` | `PublicRoute` |
+| `/login` | `LoginPage` | `PublicRoute` |
+| `/signup` | `SignupPage` | `PublicRoute` |
+| `/dashboard` | `DashboardPage` | `PrivateRoute` + `PrivateLayout` |
+| `/challenges` | `ChallengesPage` | `PrivateRoute` + `PrivateLayout` |
+| `/tasks` | `TasksPage` | `PrivateRoute` + `PrivateLayout` |
+| `/profile` | `ProfilePage` | `PrivateRoute` + `PrivateLayout` |
+
+## Authentication guards
+
+Two lightweight wrapper components read `isAuthenticated` from `useAuthStore` and perform a redirect when the condition is not met.
+
+### PrivateRoute
+
+Redirects unauthenticated users to `"/"`.
+
+```tsx
+const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
+  const { isAuthenticated } = useAuthStore();
+  return isAuthenticated ? <>{children}</> : <Navigate to="/" />;
+};
+```
+
+### PublicRoute
+
+Redirects already-authenticated users to `"/dashboard"` so they cannot navigate back to the login or sign-up pages.
+
+```tsx
+const PublicRoute: React.FC<PublicRouteProps> = ({ children }) => {
+  const { isAuthenticated } = useAuthStore();
+  return isAuthenticated ? <Navigate to="/dashboard" /> : <>{children}</>;
+};
+```
+
+## PrivateLayout wrapper
+
+All authenticated routes share a common layout provided by `PrivateLayout`. It renders the collapsible desktop `Sidebar` and the mobile `BottomNav` around the page content:
+
+```tsx
+// src/components/layout/PrivateLayout.tsx
+const PrivateLayout: React.FC<PrivateLayoutProps> = ({ children }) => {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  return (
+    <Wrapper $sidebarCollapsed={sidebarCollapsed}>
+      <Sidebar collapsed={sidebarCollapsed} onCollapseChange={setSidebarCollapsed} />
+      <Content $sidebarCollapsed={sidebarCollapsed}>{children}</Content>
+      <BottomNav />
+    </Wrapper>
+  );
+};
+```
+
+The `<Outlet />` from React Router renders the matched child route inside `<Content>`.
+
+## Full route definition
+
+```tsx
+// src/routes/AppRoutes.tsx
+const AppRoutes: React.FC = () => {
+  return (
+    <Routes>
+      <Route
+        path="/login"
+        element={
+          <PublicRoute>
+            <LoginPage />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/signup"
+        element={
+          <PublicRoute>
+            <SignupPage />
+          </PublicRoute>
+        }
+      />
+      <Route
+        element={
+          <PrivateRoute>
+            <PrivateLayout>
+              <Outlet />
+            </PrivateLayout>
+          </PrivateRoute>
+        }
+      >
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/challenges" element={<ChallengesPage />} />
+        <Route path="/tasks" element={<TasksPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+      </Route>
+
+      <Route
+        path="/"
+        element={
+          <PublicRoute>
+            <HomePage />
+          </PublicRoute>
+        }
+      />
+    </Routes>
+  );
+};
+```
+
+<Note>
+  The four authenticated routes are nested under a single layout route (no `path` prop). This means `PrivateRoute` and `PrivateLayout` are evaluated once, and the matched child page is rendered via `<Outlet />`.
+</Note>
+
+## Navigation
+
+Inside `PrivateLayout`, the `Sidebar` component and the `BottomNav` component use React Router's `<Link>` and `useLocation()` to render active states for each navigation item.

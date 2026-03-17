@@ -1,0 +1,97 @@
+---
+title: "Dashboard"
+description: "The gamified home screen of Mais Hábito showing your points, streak, active challenge, and recent tasks."
+---
+
+The Dashboard (`/dashboard`) is the first screen you see after logging in. It gives you a real-time snapshot of your gamification progress and surfaces your most recent tasks so you can complete them without navigating away.
+
+## What the dashboard shows
+
+<CardGroup cols={2}>
+  <Card title="Points" icon="star">
+    Your total accumulated XP (`UserProfile.points`) displayed as a score card
+  </Card>
+  <Card title="Streak" icon="fire">
+    Your `current_streak` in days, with your all-time `max_streak` shown underneath
+  </Card>
+  <Card title="Active challenge" icon="trophy">
+    The title and start date of your currently active challenge, with a link to `/challenges`
+  </Card>
+  <Card title="Recent tasks" icon="check-square">
+    Up to three of your tasks with inline complete buttons
+  </Card>
+</CardGroup>
+
+## User metrics
+
+The dashboard fetches your profile via `userService.getProfile()` and displays the following fields from `UserProfile`:
+
+```typescript
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  profile_picture: string | null;
+  points: number;
+  current_streak: number;
+  max_streak: number;
+  created_at: string;
+  updated_at: string;
+}
+```
+
+<ResponseField name="points" type="number" required>
+  Total XP accumulated across all task and challenge completions. Displayed as your score on the dashboard.
+</ResponseField>
+
+<ResponseField name="current_streak" type="number" required>
+  Number of consecutive days you have completed at least one task. Shown in the **Sequência** card.
+</ResponseField>
+
+<ResponseField name="max_streak" type="number" required>
+  Your all-time longest streak. Shown beneath `current_streak` as "Max: N".
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Your display name. The dashboard greets you with the first word of your name.
+</ResponseField>
+
+## Real-time updates
+
+The `DashboardPage` component calls `taskService.completeTask(taskId)` inline when you press **Concluir** on a task card. After a successful completion it silently re-fetches all three data sources in parallel:
+
+```typescript
+const [profileData, challengeData, tasksData] = await Promise.all([
+  userService.getProfile(),
+  challengeService.getActiveChallenge().catch(() => null),
+  taskService.listMyTasks().catch(() => [] as TaskWithCount[]),
+]);
+```
+
+Because the fetch is silent (no loading spinner), your score and streak update immediately after you tap **Concluir** without any visible flash.
+
+<Info>
+  The dashboard preview shows only the three most recent tasks (`tasksData.slice(0, 3)`). To see your full task list, click **VER TODAS** or navigate to `/tasks`.
+</Info>
+
+## Active challenge section
+
+If you have an active challenge, the dashboard displays:
+
+- The challenge title (from `challenge.template?.title`)
+- The start date
+- A **Ver Detalhes →** button that navigates to `/challenges`
+
+If no challenge is active, a prompt appears inviting you to explore the challenge catalog.
+
+## Navigating to the dashboard
+
+The dashboard is available at the `/dashboard` route. It is the default landing page after a successful login. You can also reach it from the bottom navigation bar in the app.
+
+## Data caching
+
+The dashboard uses the `appCache` Zustand store to avoid unnecessary loading states on repeat visits. If cached data exists for `profile`, `activeUserChallenge`, or `dashboardTasks`, the page renders immediately from cache and re-fetches silently in the background.
+
+<Tip>
+  To force a fresh load, hard-refresh the page. The cache is held in memory and resets on each new session.
+</Tip>

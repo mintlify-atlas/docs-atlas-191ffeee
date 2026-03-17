@@ -1,0 +1,79 @@
+---
+title: "Introduction"
+description: "Mais Hábito is a gamified web application for building consistent habits through challenges, daily tasks, streaks, and an XP-based progression system."
+---
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/getting-started/quickstart">
+    Set up and run Mais Hábito locally in minutes
+  </Card>
+  <Card title="Core Concepts" icon="lightbulb" href="/concepts/gamification">
+    Understand the gamification system behind the app
+  </Card>
+  <Card title="Features" icon="star" href="/features/authentication/overview">
+    Explore all features: challenges, tasks, dashboard, and profile
+  </Card>
+  <Card title="Architecture" icon="building" href="/architecture/overview">
+    Deep dive into the technical architecture and code structure
+  </Card>
+</CardGroup>
+
+## What is Mais Hábito?
+
+Mais Hábito ("More Habit" in Portuguese) is a **single-player productivity app** focused on building consistent routines through gamification. The app transforms habit-building into an engaging progression system where completing tasks and challenges earns XP, builds streaks, and levels up your profile.
+
+The application is a React-based frontend that connects to the [Mais Hábito API](https://github.com/RafaeltiMoreira/mais-habito-api) for data persistence and business logic.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Gamified Dashboard" icon="chart-line">
+    Track your level, accumulated XP, and daily streak ("Sequência") in real time
+  </Card>
+  <Card title="Challenge Catalog" icon="trophy">
+    Create challenge templates and accept long-term consistency tracks like "Academia 30 Dias"
+  </Card>
+  <Card title="Task Management" icon="check-square">
+    Full CRUD for daily tasks with point values and routine scheduling
+  </Card>
+  <Card title="Progress Journal" icon="book-open">
+    Add timestamped notes to your active challenges to track your journey
+  </Card>
+  <Card title="Authentication" icon="lock">
+    Secure JWT-based login and registration with session persistence
+  </Card>
+  <Card title="Responsive Design" icon="mobile">
+    Fluid interface optimized for both mobile and desktop devices
+  </Card>
+</CardGroup>
+
+## Tech Stack
+
+Mais Hábito is built with a modern TypeScript stack:
+
+| Layer | Technology |
+|-------|-----------|
+| Framework | React 19 |
+| Language | TypeScript 5 |
+| Build Tool | Vite 6 |
+| Styling | Styled Components 6 |
+| State Management | Zustand 5 |
+| HTTP Client | Axios |
+| Forms | React Hook Form 7 + Zod 4 |
+| Routing | React Router DOM 7 |
+| Icons | Lucide React |
+
+## How It Works
+
+The app follows a simple progression loop:
+
+1. **Sign up** and create your account
+2. **Browse challenges** from the catalog or create your own templates
+3. **Accept a challenge** to start a timed consistency track
+4. **Complete daily tasks** linked to your challenges to earn XP
+5. **Write notes** in your progress journal to reflect on your journey
+6. **Track your streak** on the dashboard to stay motivated
+
+<Note>
+  Mais Hábito is a frontend-only project. It requires a running instance of the [Mais Hábito API](https://github.com/RafaeltiMoreira/mais-habito-api) to function. Configure the API URL in your `.env` file before starting.
+</Note>

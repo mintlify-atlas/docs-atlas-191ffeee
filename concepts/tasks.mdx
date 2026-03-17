@@ -1,0 +1,131 @@
+---
+title: "Tasks"
+description: "How tasks work, what fields they carry, and how completing them earns points."
+---
+
+Tasks are the day-to-day unit of action in Mais Hábito. Every task you complete earns points and contributes to your streak. Tasks can be one-off items or recurring daily habits — the `is_daily_routine` flag controls that distinction.
+
+## TypeScript interfaces
+
+```typescript src/types/task.types.ts
+export interface Task {
+  id: number;
+  user_id: string;
+  challenge_template_id: number | null;
+  title: string;
+  description: string | null;
+  points: number;
+  is_daily_routine: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TaskWithCount {
+  task: Task;
+  completion_count: number;
+}
+
+export interface TaskCompletion {
+  id: number;
+  user_id: string;
+  task_id: number;
+  completed_at: string;
+}
+
+export interface CreateTaskData {
+  challenge_template_id?: number | null;
+  title: string;
+  description?: string;
+  points: number;
+  is_daily_routine?: boolean;
+}
+
+export interface UpdateTaskData {
+  title?: string;
+  description?: string;
+  points?: number;
+  is_daily_routine?: boolean;
+}
+```
+
+## Task fields
+
+| Field | Type | Description |
+|---|---|---|
+| `title` | `string` | The name of the task displayed on cards and lists. |
+| `description` | `string \| null` | Optional longer description. Shown on the task card; defaults to "Sem descrição" if omitted. |
+| `points` | `number` | Points awarded when you mark this task complete. Set this when creating the task. |
+| `is_daily_routine` | `boolean` | If `true`, the task resets each day and can be completed once per day. If `false`, it is a one-off task. |
+| `challenge_template_id` | `number \| null` | Links the task to a specific `ChallengeTemplate`. `null` for standalone tasks. |
+
+## Daily routine vs one-off tasks
+
+The `is_daily_routine` flag changes how the dashboard treats completion:
+
+```typescript src/pages/dashboard/DashboardPage.tsx
+const isCompleted = completion_count > 0 && task.is_daily_routine;
+```
+
+- **Daily routine (`is_daily_routine: true`)** — Once you complete the task on a given day (`completion_count > 0`), the **Concluir** button disables and shows **Concluída ✓**. The next calendar day, `completion_count` resets and the task is available again.
+- **One-off task (`is_daily_routine: false`)** — The button never disables based on completion count alone. These tasks are meant to be done once and then removed or archived.
+
+<Tip>
+Use `is_daily_routine: true` for habits you want to build — exercise, reading, hydration. Use `is_daily_routine: false` for discrete to-do items that do not repeat.
+</Tip>
+
+## TaskWithCount — completion tracking
+
+The API returns tasks as `TaskWithCount` objects rather than bare `Task` records when listing for the dashboard. This wraps each task with a `completion_count` that reflects how many times you have completed it today:
+
+```typescript
+export interface TaskWithCount {
+  task: Task;
+  completion_count: number;
+}
+```
+
+The dashboard uses `taskService.listMyTasks()`, which returns `TaskWithCount[]`, and displays the first three results:
+
+```typescript src/pages/dashboard/DashboardPage.tsx
+const tasksData = await taskService.listMyTasks().catch(() => [] as TaskWithCount[]);
+cache.setDashboard({ dashboardTasks: tasksData.slice(0, 3) });
+```
+
+You can see all your tasks by navigating to the **Tasks** (Agenda) page.
+
+## Earning points by completing tasks
+
+When you click **Concluir** on a task card, the dashboard calls `taskService.completeTask(taskId)`. This:
+
+1. Creates a `TaskCompletion` record on the API, stamped with the current timestamp.
+2. Adds the task's `points` value to your `UserProfile.points` total.
+3. Updates `current_streak` if this is your first completion of the day.
+
+After the API call resolves, the dashboard silently re-fetches your profile, active challenge, and task list so the points and streak counters update immediately.
+
+## Creating and updating tasks
+
+You manage tasks via the **Tarefas** (Tasks) page, which provides a full CRUD interface. The `CreateTaskData` and `UpdateTaskData` interfaces define what the API accepts:
+
+```typescript src/types/task.types.ts
+export interface CreateTaskData {
+  challenge_template_id?: number | null;
+  title: string;
+  description?: string;
+  points: number;
+  is_daily_routine?: boolean;
+}
+
+export interface UpdateTaskData {
+  title?: string;
+  description?: string;
+  points?: number;
+  is_daily_routine?: boolean;
+}
+```
+
+`points` is required when creating a task — there is no default value. Choose a number that reflects the actual effort the habit requires.
+
+<Note>
+You can link a task to a `ChallengeTemplate` via `challenge_template_id`. This is optional and does not change how the task behaves on the dashboard — it is primarily a classification tool.
+</Note>

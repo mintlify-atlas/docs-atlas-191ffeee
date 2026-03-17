@@ -1,0 +1,157 @@
+---
+title: "State management"
+description: "Zustand stores for authentication, theme preference, and cross-page data caching."
+---
+
+Mais Hábito uses **Zustand 5** for all global state. There are three stores, each with a single responsibility.
+
+<Note>
+  Zustand stores are plain hooks — you call them directly inside any component. No context providers or selectors boilerplate required.
+</Note>
+
+## authStore
+
+**File:** `src/store/authStore.ts`
+
+Holds the active session. State is seeded from `localStorage` on first load so the user stays logged in across page refreshes.
+
+```typescript
+interface AuthState {
+  user: User | null;     // { id, email, name }
+  token: string | null;  // JWT
+  isAuthenticated: boolean;
+  setAuth: (user: User, token: string) => void;
+  logout: () => void;
+}
+
+export const useAuthStore = create<AuthState>((set) => ({
+  user: getInitialUser(),           // reads localStorage('user')
+  token: getInitialToken(),         // reads localStorage('token')
+  isAuthenticated: !!getInitialToken(),
+
+  setAuth: (user: User, token: string) => {
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
+    set({ user, token, isAuthenticated: true });
+  },
+
+  logout: () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    sessionStorage.removeItem('_up');
+    set({ user: null, token: null, isAuthenticated: false });
+  },
+}));
+```
+
+### Using authStore in a component
+
+```tsx
+import { useAuthStore } from '../store/authStore';
+
+const { user, logout } = useAuthStore();
+```
+
+---
+
+## themeStore
+
+**File:** `src/store/themeStore.ts`
+
+Tracks whether the app is in dark or light mode. The preference is persisted to `localStorage` so it survives a page reload. The store defaults to dark mode unless `localStorage('theme')` is explicitly set to `'light'`.
+
+```typescript
+export const useThemeStore = create<ThemeState>((set) => ({
+  isDark: localStorage.getItem('theme') !== 'light',
+  toggleTheme: () =>
+    set((state) => {
+      const newIsDark = !state.isDark;
+      localStorage.setItem('theme', newIsDark ? 'dark' : 'light');
+      return { isDark: newIsDark };
+    }),
+}));
+```
+
+`main.tsx` subscribes to this store to swap the styled-components `ThemeProvider` theme object:
+
+```tsx
+const Root = () => {
+  const isDark = useThemeStore((s) => s.isDark);
+  const theme = isDark ? darkTheme : lightTheme;
+
+  return (
+    <ThemeProvider theme={theme}>
+      <GlobalStyle />
+      <App />
+    </ThemeProvider>
+  );
+};
+```
+
+### Using themeStore in a component
+
+```tsx
+import { useThemeStore } from '../store/themeStore';
+
+const { isDark, toggleTheme } = useThemeStore();
+```
+
+---
+
+## appCache
+
+**File:** `src/store/appCache.ts`
+
+Acts as an in-memory cache shared between pages. Instead of each page fetching the same data independently, pages write their fetched results here and read from the cache on subsequent visits within the same session.
+
+```typescript
+interface AppCache {
+  // Dashboard
+  dashboardTasks: TaskWithCount[];
+  dashboardMetrics: DashboardMetrics | null;  // streak, points, completedToday
+
+  // Challenges
+  activeUserChallenge: UserChallenge | null;
+  userChallenges: UserChallenge[];
+  challengeTemplates: ChallengeTemplate[];
+
+  // Tasks
+  tasks: TaskWithCount[];
+
+  // Profile
+  profile: UserProfile | null;
+
+  // Setters
+  setDashboard: (data: Partial<...>) => void;
+  setChallenges: (data: Partial<...>) => void;
+  setTasks: (data: Partial<...>) => void;
+  setProfile: (profile: UserProfile | null) => void;
+  clearCache: () => void;
+}
+```
+
+Call `clearCache()` on logout to prevent stale data from leaking into the next session.
+
+### Using appCache in a component
+
+```tsx
+import { useAppCache } from '../store/appCache';
+
+const { tasks, setTasks } = useAppCache();
+```
+
+---
+
+## Store summary
+
+<CardGroup cols={3}>
+  <Card title="useAuthStore">
+    Session state: `user`, `token`, `isAuthenticated`. Persisted to `localStorage`.
+  </Card>
+  <Card title="useThemeStore">
+    Theme toggle: `isDark`, `toggleTheme`. Persisted to `localStorage`.
+  </Card>
+  <Card title="useAppCache">
+    In-memory cross-page data cache. Cleared on logout.
+  </Card>
+</CardGroup>

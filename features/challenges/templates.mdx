@@ -1,0 +1,130 @@
+---
+title: "Challenge templates"
+description: "Create, browse, and delete challenge templates — the blueprints that define what a challenge is."
+---
+
+A **challenge template** (`ChallengeTemplate`) is the blueprint for a challenge. It defines the title, description, and how many days the challenge runs. Templates live in a shared catalog that any user can browse and accept.
+
+## The `ChallengeTemplate` type
+
+```typescript
+export interface ChallengeTemplate {
+  id: number;
+  title: string;
+  description: string;
+  duration_days: number;
+  created_at: string;
+  updated_at: string;
+}
+```
+
+<ResponseField name="id" type="number" required>
+  Unique identifier for the template.
+</ResponseField>
+
+<ResponseField name="title" type="string" required>
+  Short name for the challenge, shown in the catalog and on the active challenge card.
+</ResponseField>
+
+<ResponseField name="description" type="string" required>
+  A longer explanation of what the challenge involves.
+</ResponseField>
+
+<ResponseField name="duration_days" type="number" required>
+  How many days the challenge runs. Must be between 1 and 365.
+</ResponseField>
+
+<ResponseField name="created_at" type="string" required>
+  ISO 8601 timestamp of when the template was created.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string" required>
+  ISO 8601 timestamp of the last update.
+</ResponseField>
+
+## Browse the catalog
+
+The Challenges page loads all available templates when you open the **New Challenge** modal. The catalog lists each template with its title and duration.
+
+To retrieve templates programmatically:
+
+```typescript
+const templates = await challengeService.listTemplates();
+// Returns: ChallengeTemplate[]
+```
+
+<Info>
+  The catalog has a limit of 10 templates. Once you reach the limit, you must delete an existing template before creating a new one.
+</Info>
+
+## Create a template
+
+<Steps>
+  <Step title="Open the New Challenge modal">
+    Click **Novo Desafio** in the top-right corner of the Challenges page.
+  </Step>
+  <Step title="Switch to the create view">
+    Click **Criar Desafio** at the bottom of the accept form. This button is only visible when the catalog has fewer than 10 templates.
+  </Step>
+  <Step title="Fill in the form">
+    Provide a title, description, and duration.
+
+    <ParamField body="title" type="string" required>
+      Minimum 3 characters.
+    </ParamField>
+
+    <ParamField body="description" type="string" required>
+      Minimum 10 characters. Describe what you will do during the challenge.
+    </ParamField>
+
+    <ParamField body="duration_days" type="number" required>
+      Number of days the challenge runs. Must be between 1 and 365.
+    </ParamField>
+  </Step>
+  <Step title="Save">
+    Click **Salvar novo Desafio**. The new template appears in the catalog immediately.
+  </Step>
+</Steps>
+
+To create a template programmatically:
+
+```typescript
+const template = await challengeService.createTemplate({
+  title: "Academia 30 Dias",
+  description: "Ir à academia todos os dias por 30 dias consecutivos.",
+  duration_days: 30,
+});
+// Returns: ChallengeTemplate
+```
+
+## Delete a template
+
+You can delete any template from the catalog. To do so in the UI:
+
+<Steps>
+  <Step title="Open the delete view">
+    In the **New Challenge** modal, click **Excluir um desafio**. This option appears when the catalog is at capacity (10 templates), or you can navigate directly.
+  </Step>
+  <Step title="Confirm deletion">
+    Click the trash icon next to the template you want to remove and confirm the prompt.
+  </Step>
+</Steps>
+
+To delete a template programmatically:
+
+```typescript
+await challengeService.deleteTemplate(id);
+// Returns: void
+```
+
+<Warning>
+  Deleting a template removes it from the catalog permanently. Existing `UserChallenge` records that reference the template keep their `template_id`, but the template details will no longer be available.
+</Warning>
+
+## Service reference
+
+| Method | Signature | Returns |
+|---|---|---|
+| List templates | `listTemplates()` | `Promise<ChallengeTemplate[]>` |
+| Create template | `createTemplate({ title, description, duration_days })` | `Promise<ChallengeTemplate>` |
+| Delete template | `deleteTemplate(id: number)` | `Promise<void>` |

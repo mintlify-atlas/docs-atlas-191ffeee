@@ -1,0 +1,80 @@
+---
+title: "Architecture overview"
+description: "High-level architectural decisions and patterns used in Mais Hábito."
+---
+
+Mais Hábito is a React 19 single-page application built with TypeScript. This section covers the core architectural decisions that shape every feature you build or maintain in the codebase.
+
+## Separation of concerns
+
+The app follows a clear layered model:
+
+```
+Pages  →  Services  →  API (Axios instance)
+              ↓
+          Zustand stores (global state)
+```
+
+- **Pages** own the visual skeleton and user interactions. They call service functions to fetch or mutate data, then write results into Zustand stores.
+- **Services** are thin wrappers around the Axios instance. Each domain (auth, challenges, tasks, user) has its own service file in `src/services/`.
+- **The Axios instance** (`src/services/api.ts`) handles authentication headers and unified 401 error handling via interceptors.
+- **Zustand stores** (`src/store/`) hold global state: authentication session, theme preference, and a cross-page data cache.
+
+## Atomic design approach
+
+Pages act as the composition root. Smaller, co-located components — modals, list items, cards — live in a `components/` subfolder alongside the page that owns them. For example:
+
+```
+src/pages/challenges/
+├── ChallengesPage.tsx        # Page — fetches data, manages layout
+├── ChallengesPage.styles.ts  # Styled components for the page
+└── components/
+    ├── ActiveChallengeCard.tsx
+    ├── CreateChallengeModal.tsx
+    └── AbandonChallengeModal.tsx
+```
+
+This keeps domain logic close to the UI that uses it without polluting the global `src/components/` folder with page-specific pieces.
+
+## Key technology decisions
+
+| Concern | Library | Why |
+|---|---|---|
+| Global state | Zustand 5 | Minimal boilerplate, no context wrapping |
+| HTTP client | Axios 1 | Interceptors for JWT and 401 handling |
+| Schema validation | Zod 4 | Typed schemas that stay in sync with TypeScript interfaces |
+| Forms | React Hook Form 7 | Performant — avoids excessive re-renders |
+| Styling | Styled Components 6 | Scoped CSS-in-JS with full theme token access |
+| Routing | React Router DOM 7 | Declarative route guards via wrapper components |
+
+## Authentication guards
+
+Two wrapper components in `src/routes/AppRoutes.tsx` protect routes:
+
+- **`PrivateRoute`** — reads `isAuthenticated` from `useAuthStore`. If the user is not authenticated, it redirects to `"/"`.
+- **`PublicRoute`** — if the user *is* authenticated, it redirects to `"/dashboard"` so logged-in users cannot reach the login or sign-up pages.
+
+Authenticated routes are also wrapped in `PrivateLayout`, which renders the sidebar navigation and the mobile bottom nav.
+
+## Further reading
+
+<CardGroup cols={2}>
+  <Card title="Folder structure" href="/architecture/folder-structure">
+    What lives in each directory and why.
+  </Card>
+  <Card title="Routing" href="/architecture/routing">
+    Route definitions, guards, and the PrivateLayout wrapper.
+  </Card>
+  <Card title="State management" href="/architecture/state-management">
+    Zustand stores: auth, theme, and app cache.
+  </Card>
+  <Card title="API integration" href="/architecture/api-integration">
+    Axios instance, JWT interceptor, and service layer.
+  </Card>
+  <Card title="Theming" href="/architecture/theming">
+    Dark and light theme tokens and the ThemeProvider setup.
+  </Card>
+  <Card title="Styled components" href="/architecture/styled-components">
+    CSS-in-JS patterns and typed theme access.
+  </Card>
+</CardGroup>

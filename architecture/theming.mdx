@@ -1,0 +1,161 @@
+---
+title: "Theming"
+description: "Dark and light theme token objects, baseTheme shared properties, and the ThemeProvider setup."
+---
+
+Mais Hábito ships with a dark and a light theme. Both themes share a common `baseTheme` for typography, spacing, and shape tokens, while differing only in their `colors` object.
+
+## Theme file location
+
+`src/styles/theme.ts` exports `darkTheme`, `lightTheme`, and the `Theme` type.
+
+## baseTheme — shared tokens
+
+All values that do not depend on dark or light mode are defined once in `baseTheme` and spread into both theme objects:
+
+```typescript
+const baseTheme = {
+  fonts: {
+    family: "'Inter', sans-serif",
+    sizes: {
+      xs: '0.75rem',
+      sm: '0.875rem',
+      md: '1rem',
+      lg: '1.125rem',
+      xl: '1.25rem',
+      xxl: '1.5rem',
+      title: '2rem',
+    },
+    weights: {
+      regular: 400,
+      medium: 500,
+      semibold: 600,
+      bold: 700,
+    },
+  },
+  spacing: {
+    xs: '4px',
+    sm: '8px',
+    md: '16px',
+    lg: '24px',
+    xl: '32px',
+    xxl: '48px',
+  },
+  borderRadius: {
+    sm: '6px',
+    md: '12px',
+    lg: '20px',
+    full: '999px',
+  },
+  shadows: {
+    sm: '0 1px 4px rgba(0,0,0,0.2)',
+    md: '0 4px 12px rgba(0,0,0,0.3)',
+    lg: '0 8px 24px rgba(0,0,0,0.4)',
+  },
+};
+```
+
+## darkTheme colors
+
+```typescript
+export const darkTheme = {
+  ...baseTheme,
+  colors: {
+    primary:       '#06B6D4',
+    primaryDark:   '#0891B2',
+    primaryLight:  '#22D3EE',
+    secondary:     '#FFE66D',
+    background:    '#0D0D0D',
+    surface:       '#1A1A1A',
+    surfaceAlt:    '#242424',
+    textPrimary:   '#EAEAEA',
+    textSecondary: '#9A9AB0',
+    border:        '#2A2A2A',
+    error:         '#FF4444',
+    success:       '#44BB77',
+  },
+};
+```
+
+## lightTheme colors
+
+```typescript
+export const lightTheme = {
+  ...baseTheme,
+  colors: {
+    primary:       '#0891B2',
+    primaryDark:   '#0E7490',
+    primaryLight:  '#06B6D4',
+    secondary:     '#FFE66D',
+    background:    '#FAFAFA',
+    surface:       '#FFFFFF',
+    surfaceAlt:    '#F0F0F0',
+    textPrimary:   '#2D2D2D',
+    textSecondary: '#8A8A8A',
+    border:        '#E8E8E8',
+    error:         '#FF4444',
+    success:       '#44BB77',
+  },
+};
+```
+
+## Theme type
+
+The `Theme` type is derived directly from `darkTheme` to keep the type and the runtime object in sync:
+
+```typescript
+export type Theme = typeof darkTheme;
+```
+
+This means any new token you add to `darkTheme` is automatically reflected in the type. You do not maintain a separate interface.
+
+## Color token reference
+
+| Token | Dark | Light | Usage |
+|---|---|---|---|
+| `primary` | `#06B6D4` | `#0891B2` | Buttons, links, active states |
+| `primaryDark` | `#0891B2` | `#0E7490` | Gradient ends, hover states |
+| `primaryLight` | `#22D3EE` | `#06B6D4` | Highlights, glows |
+| `secondary` | `#FFE66D` | `#FFE66D` | Accent / reward colour |
+| `background` | `#0D0D0D` | `#FAFAFA` | Page background |
+| `surface` | `#1A1A1A` | `#FFFFFF` | Cards, modals |
+| `surfaceAlt` | `#242424` | `#F0F0F0` | Input backgrounds, alternate rows |
+| `textPrimary` | `#EAEAEA` | `#2D2D2D` | Body text |
+| `textSecondary` | `#9A9AB0` | `#8A8A8A` | Labels, placeholders |
+| `border` | `#2A2A2A` | `#E8E8E8` | Dividers, card borders |
+| `error` | `#FF4444` | `#FF4444` | Validation errors |
+| `success` | `#44BB77` | `#44BB77` | Success states |
+
+## ThemeProvider setup
+
+`main.tsx` reads the current preference from `useThemeStore` and passes the appropriate theme object to styled-components' `ThemeProvider`:
+
+```tsx
+// src/main.tsx
+const Root = () => {
+  const isDark = useThemeStore((s) => s.isDark);
+  const theme = isDark ? darkTheme : lightTheme;
+
+  return (
+    <ThemeProvider theme={theme}>
+      <GlobalStyle />
+      <App />
+      <Toaster
+        toastOptions={{
+          style: {
+            background: theme.colors.surface,
+            color: theme.colors.textPrimary,
+            border: `1px solid ${theme.colors.border}`,
+          },
+        }}
+      />
+    </ThemeProvider>
+  );
+};
+```
+
+When the user calls `toggleTheme()`, the store updates `isDark`, `Root` re-renders with the new theme object, and all styled components instantly reflect the new token values.
+
+<Tip>
+  The app defaults to dark mode. If `localStorage('theme')` is absent or any value other than `'light'`, the dark theme is active.
+</Tip>

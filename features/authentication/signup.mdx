@@ -1,0 +1,142 @@
+---
+title: "Sign up"
+description: "How new users create an account and are automatically signed in to Mais Hábito."
+---
+
+The sign-up page lets you create a new account. After a successful registration, you are automatically authenticated and redirected to the dashboard — no separate login step required.
+
+## Sign-up flow
+
+<Steps>
+  <Step title="Fill in the registration form">
+    Enter your name, email address, and password on the sign-up form at `/signup`.
+  </Step>
+  <Step title="Client-side validation">
+    The form validates your input using Zod before making any network request. Errors are displayed inline beneath each field.
+  </Step>
+  <Step title="POST /auth/signup">
+    `authService.signup(name, email, password)` sends a `POST` request to `/auth/signup` with your details.
+  </Step>
+  <Step title="Receive JWT">
+    The server responds with an `AuthResponse` containing a JWT and your new user object.
+  </Step>
+  <Step title="Auto-login">
+    `setAuth(user, token)` saves the token and user to `localStorage` and sets `isAuthenticated` to `true` in the Zustand store.
+  </Step>
+  <Step title="Redirect to dashboard">
+    You are redirected to `/dashboard` and a success toast is shown.
+  </Step>
+</Steps>
+
+<Note>
+  Sign-up and login use the same `AuthResponse` type and the same `setAuth` action — registration is effectively an automatic login.
+</Note>
+
+## Form fields
+
+<ParamField path="body.name" type="string" required>
+  Your display name. Must be at least 2 characters.
+</ParamField>
+
+<ParamField path="body.email" type="string" required>
+  A valid email address. Validated with `z.email()`.
+</ParamField>
+
+<ParamField path="body.password" type="string" required>
+  Your chosen password. Must be at least 6 characters.
+</ParamField>
+
+### Validation rules
+
+The form uses a Zod schema (`signupSchema`) to validate input before submission:
+
+```typescript
+// src/pages/auth/SignupPage.tsx
+const signupSchema = z.object({
+  name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres'),
+  email: z.email('Email inválido'),
+  password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
+});
+```
+
+| Field | Rule | Error message |
+|---|---|---|
+| `name` | Minimum 2 characters | `O nome deve ter pelo menos 2 caracteres` |
+| `email` | Valid email format | `Email inválido` |
+| `password` | Minimum 6 characters | `A senha deve ter pelo menos 6 caracteres` |
+
+## authService.signup
+
+`authService.signup` posts your registration details to the API and returns an `AuthResponse`.
+
+```typescript
+// src/services/auth.service.ts
+signup: async (name: string, email: string, password: string): Promise<AuthResponse> => {
+    const response = await api.post(`/auth/signup`, {
+        name,
+        email,
+        password
+    });
+    return response.data as AuthResponse;
+}
+```
+
+## AuthResponse type
+
+The signup endpoint returns the same shape as login:
+
+```typescript
+// src/types/auth.types.ts
+export interface AuthResponse {
+    token: string;
+    user: {
+        id: string;
+        email: string;
+        name: string;
+    };
+}
+```
+
+<ResponseField name="token" type="string" required>
+  JWT used to authenticate subsequent requests. Stored in `localStorage` under the key `token`.
+</ResponseField>
+
+<ResponseField name="user" type="object" required>
+  <Expandable title="properties">
+    <ResponseField name="id" type="string" required>
+      Unique identifier assigned to the new user.
+    </ResponseField>
+    <ResponseField name="email" type="string" required>
+      The email address used to register.
+    </ResponseField>
+    <ResponseField name="name" type="string" required>
+      The display name provided during registration.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Error handling
+
+If signup fails, the server error message is displayed inline on the form.
+
+```typescript
+// src/pages/auth/SignupPage.tsx
+} catch (err) {
+  if (axios.isAxiosError(err)) {
+    setError(err.response?.data?.error || 'Erro ao fazer cadastro');
+  } else {
+    setError('Erro inesperado, tente novamente');
+  }
+}
+```
+
+Common error scenarios:
+
+| Cause | Displayed message |
+|---|---|
+| Email already in use | Server-provided `error` field, or `Erro ao fazer cadastro` |
+| Non-Axios error (e.g. network failure) | `Erro inesperado, tente novamente` |
+
+<Tip>
+  Already have an account? Go to the [login page](/features/authentication/login) to sign in.
+</Tip>

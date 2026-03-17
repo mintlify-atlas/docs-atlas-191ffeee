@@ -1,0 +1,161 @@
+---
+title: "Styled components"
+description: "CSS-in-JS patterns, typed theme access, GlobalStyle, and when to use styled-components."
+---
+
+Mais Hábito uses **Styled Components 6** for all component-level styling. Every page and layout component has a companion `.styles.ts` file that exports the styled primitives the component imports.
+
+## The co-located styles pattern
+
+Each component keeps its styles in a sibling file:
+
+```
+LoginPage.tsx          ← component logic
+LoginPage.styles.ts    ← all styled components for this page
+```
+
+This makes it easy to find styles and avoids polluting a single global stylesheet.
+
+## Accessing theme tokens
+
+Because the `ThemeProvider` is mounted at the root, every styled component receives the active theme via `props.theme`. You access tokens through the interpolation syntax:
+
+```typescript
+import styled from 'styled-components';
+
+export const Input = styled.input`
+  background: ${({ theme }) => theme.colors.surfaceAlt}60;
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  color: ${({ theme }) => theme.colors.textPrimary};
+  border-radius: ${({ theme }) => theme.borderRadius.sm};
+  font-family: ${({ theme }) => theme.fonts.family};
+
+  &:focus {
+    border-color: ${({ theme }) => theme.colors.primary}80;
+    background: ${({ theme }) => theme.colors.surfaceAlt};
+  }
+
+  &::placeholder {
+    color: ${({ theme }) => theme.colors.textSecondary}80;
+  }
+`;
+```
+
+Hex colours can be combined with an opacity suffix (e.g. `#06B6D4` + `80` = 50 % opacity) directly in the template literal.
+
+## Keyframe animations
+
+Animations are defined with `keyframes` from styled-components and referenced inside styled component definitions:
+
+```typescript
+import styled, { keyframes } from 'styled-components';
+
+const fadeIn = keyframes`
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+`;
+
+const glowPulse = keyframes`
+  0%, 100% { box-shadow: 0 0 24px ${({ theme }) => theme.colors.primary}4D; }
+  50%       { box-shadow: 0 0 40px ${({ theme }) => theme.colors.primary}80; }
+`;
+
+export const LogoIcon = styled.div`
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  background: linear-gradient(
+    135deg,
+    ${({ theme }) => theme.colors.primary} 0%,
+    ${({ theme }) => theme.colors.primaryDark} 100%
+  );
+  animation: ${glowPulse} 3s ease-in-out infinite;
+`;
+```
+
+## Transient props
+
+When you need to pass a boolean flag to a styled component without forwarding it to the DOM, prefix the prop name with `$`:
+
+```typescript
+// PrivateLayout.styles.ts
+export const Wrapper = styled.div<{ $sidebarCollapsed: boolean }>`
+  display: grid;
+  grid-template-columns: ${({ $sidebarCollapsed }) =>
+    $sidebarCollapsed ? '64px 1fr' : '240px 1fr'};
+`;
+```
+
+The `$` prefix tells styled-components to consume the prop itself and not pass it through to the underlying HTML element.
+
+## GlobalStyle
+
+`src/styles/GlobalStyle.ts` provides a CSS reset and sets base typography and background colours using theme tokens:
+
+```typescript
+import { createGlobalStyle } from 'styled-components';
+
+export const GlobalStyle = createGlobalStyle`
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html, body {
+    height: 100%;
+  }
+
+  body {
+    font-family: ${({ theme }) => theme.fonts.family};
+    background-color: ${({ theme }) => theme.colors.background};
+    color: ${({ theme }) => theme.colors.textPrimary};
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  button {
+    cursor: pointer;
+    border: none;
+    background: none;
+    font-family: inherit;
+  }
+
+  input, textarea {
+    font-family: inherit;
+  }
+`;
+```
+
+`GlobalStyle` is rendered as a sibling of `App` inside the `ThemeProvider` in `main.tsx` so it has access to the theme.
+
+## TypeScript declarations
+
+`src/types/styled.d.ts` augments styled-components' `DefaultTheme` with the project's `Theme` type:
+
+```typescript
+import "styled-components";
+import type { Theme } from "../styles/theme";
+
+declare module "styled-components" {
+  export interface DefaultTheme extends Theme {}
+}
+```
+
+This gives you full autocomplete and type checking inside all template literals. If you reference a token that does not exist on the theme, TypeScript reports an error at compile time.
+
+## When to use styled-components vs inline styles
+
+| Situation | Recommendation |
+|---|---|
+| Component-level layout, colour, spacing | Styled component in a `.styles.ts` file |
+| One-off positioning on a wrapper element | Inline style is acceptable |
+| Dynamic value based on a prop | Styled component with an interpolation |
+| Global resets and base typography | `GlobalStyle` |
+| CSS animations and keyframes | `keyframes` from styled-components |
+
+<Warning>
+  Avoid hardcoding colour hex values directly in styled components. Always reference a theme token so the component responds correctly to dark/light mode switching.
+</Warning>

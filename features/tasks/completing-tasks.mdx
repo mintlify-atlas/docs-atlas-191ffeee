@@ -1,0 +1,124 @@
+---
+title: "Completing tasks"
+description: "Mark tasks as done, earn XP, and track your completion history in Mais Hábito."
+---
+
+Completing a task records a `TaskCompletion` entry, awards you the task's point value, and refreshes your streak. You can complete tasks from the **Tasks** page (`/tasks`) or directly from the **Dashboard** (`/dashboard`).
+
+## Complete a task
+
+Call `taskService.completeTask(taskId, photoUrl?)` to record a completion.
+
+```typescript
+import { taskService } from '../services/task.service';
+
+// Complete without a photo
+const completion = await taskService.completeTask(42);
+
+// Complete with an optional proof photo
+const completion = await taskService.completeTask(42, 'https://example.com/proof.jpg');
+```
+
+### Parameters
+
+<ParamField body="taskId" type="number" required>
+  The `id` of the task you want to mark as done.
+</ParamField>
+
+<ParamField body="photoUrl" type="string">
+  Optional URL of a photo to attach as proof of completion. Pass `undefined` to skip.
+</ParamField>
+
+### Response: TaskCompletion
+
+The call returns a `TaskCompletion` record:
+
+```typescript
+export interface TaskCompletion {
+  id: number;
+  user_id: string;
+  task_id: number;
+  completed_at: string;
+}
+```
+
+<ResponseField name="id" type="number" required>
+  Unique identifier of the new completion record.
+</ResponseField>
+
+<ResponseField name="user_id" type="string" required>
+  The user who completed the task.
+</ResponseField>
+
+<ResponseField name="task_id" type="number" required>
+  The task that was completed.
+</ResponseField>
+
+<ResponseField name="completed_at" type="string" required>
+  ISO 8601 timestamp of when the completion was recorded.
+</ResponseField>
+
+## How completion earns XP and contributes to your streak
+
+When you complete a task, the API:
+
+1. Creates the `TaskCompletion` record.
+2. Credits the task's `points` value to your profile's total (`UserProfile.points`).
+3. Updates your `current_streak` if this is the first completion of the day.
+
+The dashboard re-fetches your profile silently after each completion so your points and streak counter update in real time without a full page reload.
+
+<Info>
+  Your `max_streak` is preserved even if your current streak resets. You can view both values on the Dashboard and Profile pages.
+</Info>
+
+## Completing tasks step by step
+
+<Steps>
+  <Step title="Open the Tasks page">
+    Navigate to `/tasks`. You see your full list of tasks with **Pendentes** and **Concluídas** filter tabs.
+  </Step>
+  <Step title="Find the task you want to complete">
+    Use the **Todas** / **Pendentes** / **Concluídas** filters to narrow down the list.
+  </Step>
+  <Step title="Click the complete button">
+    Press the **Concluir** button on the task card. The app records the completion and shows a success toast.
+  </Step>
+  <Step title="Check your updated stats">
+    Your points and streak update on the Dashboard immediately after completion.
+  </Step>
+</Steps>
+
+## Attaching a photo for accountability
+
+Passing a `photoUrl` lets you record visual proof of a completed task — useful for challenges that require physical evidence (e.g., a post-workout photo).
+
+```typescript
+const completion = await taskService.completeTask(
+  taskId,
+  'https://cdn.example.com/workouts/2026-03-17.jpg'
+);
+```
+
+<Note>
+  The current UI does not surface a photo upload field in the task cards. Passing `photoUrl` is available via the service layer for custom integrations or future UI additions.
+</Note>
+
+## Viewing completion history
+
+Call `taskService.listMyTasks()` to retrieve all your tasks with their total completion counts:
+
+```typescript
+const tasks = await taskService.listMyTasks();
+// tasks: TaskWithCount[]
+
+tasks.forEach(({ task, completion_count }) => {
+  console.log(`${task.title}: completed ${completion_count} time(s)`);
+});
+```
+
+The `completion_count` field on `TaskWithCount` is the total number of times you have completed that task across all time. For daily routines, the Tasks page uses this count to decide whether to show the task as completed today.
+
+<Tip>
+  Filter tasks by completion status using the **Pendentes** and **Concluídas** tabs on `/tasks`. A daily routine appears under **Concluídas** once `completion_count > 0` for the current day.
+</Tip>

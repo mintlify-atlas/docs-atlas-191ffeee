@@ -1,0 +1,139 @@
+---
+title: "Tasks overview"
+description: "Understand the task system in Mais Hábito: what tasks are, how they're structured, and how they fit into the gamification loop."
+---
+
+Tasks are the core unit of work in Mais Hábito. Each task represents a discrete habit or action you want to track. Completing tasks earns points, advances your streak, and contributes to any active challenge.
+
+<CardGroup cols={2}>
+  <Card title="Creating tasks" icon="plus" href="/features/tasks/creating-tasks">
+    Create, edit, and delete tasks with point values and routine flags
+  </Card>
+  <Card title="Completing tasks" icon="check" href="/features/tasks/completing-tasks">
+    Mark tasks done, earn XP, and view your completion history
+  </Card>
+</CardGroup>
+
+## The Task interface
+
+Every task is represented by the `Task` type:
+
+```typescript
+export interface Task {
+  id: number;
+  user_id: string;
+  challenge_template_id: number | null;
+  title: string;
+  description: string | null;
+  points: number;
+  is_daily_routine: boolean;
+  created_at: string;
+  updated_at: string;
+}
+```
+
+<ResponseField name="id" type="number" required>
+  Unique numeric identifier for the task.
+</ResponseField>
+
+<ResponseField name="user_id" type="string" required>
+  The ID of the user who owns the task.
+</ResponseField>
+
+<ResponseField name="challenge_template_id" type="number | null">
+  Links the task to a challenge template. `null` when the task stands alone.
+</ResponseField>
+
+<ResponseField name="title" type="string" required>
+  Short display name for the task, shown in the task list and dashboard.
+</ResponseField>
+
+<ResponseField name="description" type="string | null">
+  Optional longer description. Shown on the task card as a subtitle.
+</ResponseField>
+
+<ResponseField name="points" type="number" required>
+  The XP value awarded when you complete the task. Assign higher values to harder tasks.
+</ResponseField>
+
+<ResponseField name="is_daily_routine" type="boolean" required>
+  When `true`, the task is treated as a daily routine (resets each day). When `false`, it is a one-off task.
+</ResponseField>
+
+<ResponseField name="created_at" type="string" required>
+  ISO 8601 timestamp of when the task was created.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string" required>
+  ISO 8601 timestamp of the most recent update.
+</ResponseField>
+
+## TaskWithCount
+
+When you fetch your task list, each item is wrapped in `TaskWithCount`, which pairs the task with how many times you have completed it:
+
+```typescript
+export interface TaskWithCount {
+  task: Task;
+  completion_count: number;
+}
+```
+
+<ResponseField name="task" type="Task" required>
+  The full `Task` object.
+</ResponseField>
+
+<ResponseField name="completion_count" type="number" required>
+  Total number of completions recorded for this task. Used to determine whether a daily routine has already been completed today.
+</ResponseField>
+
+<Note>
+  The `TasksPage` considers a daily routine completed when `completion_count > 0` and `is_daily_routine` is `true`. One-off tasks are never marked as completed in the UI filter regardless of their completion count.
+</Note>
+
+## TaskCompletion
+
+Every time you mark a task as done, a `TaskCompletion` record is created:
+
+```typescript
+export interface TaskCompletion {
+  id: number;
+  user_id: string;
+  task_id: number;
+  completed_at: string;
+}
+```
+
+<ResponseField name="id" type="number" required>
+  Unique identifier of the completion record.
+</ResponseField>
+
+<ResponseField name="user_id" type="string" required>
+  The user who completed the task.
+</ResponseField>
+
+<ResponseField name="task_id" type="number" required>
+  The task that was completed.
+</ResponseField>
+
+<ResponseField name="completed_at" type="string" required>
+  ISO 8601 timestamp of when the completion was recorded.
+</ResponseField>
+
+## Two types of tasks
+
+### Daily routines
+
+Set `is_daily_routine: true` for habits you want to repeat every day — for example, "30-minute workout" or "Read 20 pages". The app tracks whether you have completed the routine on the current day and greys out the **Concluir** button once done.
+
+### One-off tasks
+
+Leave `is_daily_routine` as `false` (the default) for tasks that are not tied to a daily cycle — for example, a milestone you want to hit once. These tasks remain in your list and can be completed multiple times, but the UI does not treat any completion as "today's" routine.
+
+## Linking tasks to challenges
+
+Set `challenge_template_id` to the ID of a challenge template to associate the task with an active challenge. This lets you organise tasks under a specific challenge track. Tasks with a `null` `challenge_template_id` are independent and always visible in your task list.
+
+<Tip>
+  Navigate to `/tasks` to see your full task list, or use the dashboard preview at `/dashboard` to see your three most recent tasks.
+</Tip>

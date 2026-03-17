@@ -1,0 +1,202 @@
+---
+title: "API integration"
+description: "Axios instance configuration, JWT interceptor, 401 handling, and the service layer pattern."
+---
+
+All HTTP communication goes through a single configured Axios instance defined in `src/services/api.ts`. Service files import this instance and never call Axios directly.
+
+## Axios instance
+
+```typescript
+// src/services/api.ts
+import axios from "axios";
+
+if (!import.meta.env.VITE_API_URL) {
+  throw new Error("VITE_API_URL is not defined in .env");
+}
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL,
+});
+```
+
+<Warning>
+  The application throws at startup if `VITE_API_URL` is not set. Make sure your `.env` file contains this variable before running the dev server.
+</Warning>
+
+## Environment variable
+
+Create a `.env` file at the project root:
+
+```bash
+VITE_API_URL=http://localhost:3000/api
+```
+
+Vite exposes all variables prefixed with `VITE_` to the client bundle via `import.meta.env`.
+
+## JWT request interceptor
+
+Every outgoing request automatically gets an `Authorization: Bearer <token>` header if a token exists in `localStorage`:
+
+```typescript
+// Request interceptor
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
+```
+
+The interceptor reads the token from `localStorage` on every request so it always uses the most current value without needing a store subscription.
+
+## 401 response interceptor
+
+When the API returns a `401 Unauthorized` response, the interceptor clears the stored token and redirects the user to the home page — unless the current page is already an auth page, in which case it lets the page's own error handling take over:
+
+```typescript
+// Response interceptor
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      const path = window.location.pathname;
+      // Don't redirect on auth pages — let them show the error message
+      const isAuthPage = path === "/login" || path === "/signup" || path === "/";
+      if (!isAuthPage) {
+        localStorage.removeItem("token");
+        sessionStorage.removeItem("_up");
+        window.location.href = "/";
+      }
+    }
+    return Promise.reject(error);
+  },
+);
+```
+
+<Info>
+  The response interceptor uses `window.location.href` for the redirect rather than React Router's `navigate()`. This performs a full page reload, which also resets all Zustand store state — effectively a clean logout.
+</Info>
+
+## Service layer pattern
+
+Each domain has its own service file. A service is a plain object whose methods call `api` and return typed responses:
+
+```typescript
+// Pattern: call api, return response.data cast to the expected type
+export const authService = {
+  login: async (email: string, password: string) => {
+    const response = await api.post(`/auth/login`, { email, password });
+    return response.data as AuthResponse;
+  },
+};
+```
+
+## Service files
+
+<AccordionGroup>
+  <Accordion title="auth.service.ts">
+    ```typescript
+    export const authService = {
+      login: async (email: string, password: string) => {
+        const response = await api.post(`/auth/login`, { email, password });
+        return response.data as AuthResponse;
+      },
+      signup: async (name: string, email: string, password: string) => {
+        const response = await api.post(`/auth/signup`, { name, email, password });
+        return response.data as AuthResponse;
+      },
+    };
+    ```
+  </Accordion>
+
+  <Accordion title="challenge.service.ts">
+    ```typescript
+    export const challengeService = {
+      listTemplates: async () => {
+        const response = await api.get(`/challenge-templates`);
+        return response.data as ChallengeTemplate[];
+      },
+      createTemplate: async (data: { title: string; description: string; duration_days: number }) => {
+        const response = await api.post(`/challenge-templates`, data);
+        return response.data as ChallengeTemplate;
+      },
+      deleteTemplate: async (id: number) => {
+        await api.delete(`/challenge-templates/${id}`);
+      },
+      acceptChallenge: async (templateId: number) => {
+        const response = await api.post(`/user-challenges/accept`, { templateId });
+        return response.data as UserChallenge;
+      },
+      getActiveChallenge: async () => {
+        const response = await api.get(`/user-challenges/active`);
+        return response.data as UserChallenge;
+      },
+      listMyChallenges: async () => {
+        const response = await api.get(`/user-challenges`);
+        return response.data as UserChallenge[];
+      },
+      completeChallenge: async (id: number) => {
+        const response = await api.put(`/user-challenges/${id}/complete`);
+        return response.data as { message: string; challenge: UserChallenge };
+      },
+      abandonChallenge: async (id: number) => {
+        const response = await api.put(`/user-challenges/${id}/abandon`);
+        return response.data as { message: string; challenge: UserChallenge };
+      },
+      updateNotes: async (id: number, notes: string) => {
+        const response = await api.put(`/user-challenges/${id}/notes`, { notes });
+        return response.data as UserChallenge;
+      },
+    };
+    ```
+  </Accordion>
+
+  <Accordion title="task.service.ts">
+    ```typescript
+    export const taskService = {
+      createTask: async (data: CreateTaskData) => {
+        const response = await api.post(`/tasks`, data);
+        return response.data as Task;
+      },
+      listMyTasks: async () => {
+        const response = await api.get(`/tasks/me`);
+        return response.data as TaskWithCount[];
+      },
+      updateTask: async (taskId: number, data: UpdateTaskData) => {
+        const response = await api.put(`/tasks/${taskId}`, data);
+        return response.data as Task;
+      },
+      deleteTask: async (taskId: number) => {
+        await api.delete(`/tasks/${taskId}`);
+      },
+      completeTask: async (taskId: number, photoUrl?: string) => {
+        const response = await api.post(`/task-completions`, {
+          task_id: taskId,
+          photo_url: photoUrl || null,
+        });
+        return response.data as TaskCompletion;
+      },
+    };
+    ```
+  </Accordion>
+
+  <Accordion title="user.service.ts">
+    ```typescript
+    export const userService = {
+      getProfile: async () => {
+        const response = await api.get(`/user/profile`);
+        return response.data as UserProfile;
+      },
+      updateProfile: async (data: UpdateProfileData) => {
+        const response = await api.put(`/user/profile`, data);
+        return response.data as UserProfile;
+      },
+    };
+    ```
+  </Accordion>
+</AccordionGroup>

@@ -1,0 +1,153 @@
+---
+title: "Creating tasks"
+description: "Create, edit, and delete tasks in Mais Hábito using the task service."
+---
+
+You can create tasks from the **Tasks** page (`/tasks`) by clicking **Nova Tarefa**, or programmatically via `taskService`.
+
+## Create a task
+
+Use `taskService.createTask(data)` to create a new task. It returns the saved `Task` object.
+
+```typescript
+import { taskService } from '../services/task.service';
+
+const task = await taskService.createTask({
+  title: 'Morning run',
+  points: 30,
+  description: '5 km before breakfast',
+  is_daily_routine: true,
+});
+```
+
+### CreateTaskData fields
+
+```typescript
+export interface CreateTaskData {
+  challenge_template_id?: number | null;
+  title: string;
+  description?: string;
+  points: number;
+  is_daily_routine?: boolean;
+}
+```
+
+<ParamField body="title" type="string" required>
+  Display name for the task. Shown in the task list and on the dashboard.
+</ParamField>
+
+<ParamField body="points" type="number" required>
+  XP value awarded on completion. Use higher values for harder or more time-consuming tasks.
+</ParamField>
+
+<ParamField body="description" type="string">
+  Optional longer description. Shown as a subtitle on the task card.
+</ParamField>
+
+<ParamField body="is_daily_routine" type="boolean" default="false">
+  Set to `true` for habits you want to repeat every day. Leave `false` for one-off tasks.
+</ParamField>
+
+<ParamField body="challenge_template_id" type="number | null">
+  Link the task to a challenge template by ID. Omit or pass `null` for a standalone task.
+</ParamField>
+
+### Setting point values
+
+There is no enforced cap on `points`, so calibrate values to reflect effort:
+
+| Effort level | Suggested points |
+|---|---|
+| Quick habit (5 min) | 5–15 |
+| Moderate habit (30 min) | 20–40 |
+| Intensive task (1+ hour) | 50–100 |
+
+<Tip>
+  Keep your point scale consistent across tasks. Large gaps between values can make lower-point tasks feel unrewarding.
+</Tip>
+
+### Linking to a challenge template
+
+Passing a `challenge_template_id` groups the task under a challenge track. The Tasks page displays the active challenge name next to the page title when a linked challenge is active.
+
+```typescript
+const task = await taskService.createTask({
+  title: 'Gym session',
+  points: 50,
+  is_daily_routine: true,
+  challenge_template_id: 3, // links to challenge template #3
+});
+```
+
+## Create a task step by step
+
+<Steps>
+  <Step title="Navigate to /tasks">
+    Open the Tasks page from the bottom navigation bar.
+  </Step>
+  <Step title="Click Nova Tarefa">
+    The **Nova Tarefa** button opens the create task modal.
+  </Step>
+  <Step title="Fill in the form">
+    Enter a title, optional description, point value, and choose whether it is a daily routine.
+  </Step>
+  <Step title="Save">
+    Submit the form. The new task appears immediately in your task list.
+  </Step>
+</Steps>
+
+## Edit a task
+
+Use `taskService.updateTask(taskId, data)` to update an existing task. Only the fields you include are changed.
+
+```typescript
+const updated = await taskService.updateTask(42, {
+  title: 'Evening run',
+  points: 40,
+});
+```
+
+### UpdateTaskData fields
+
+```typescript
+export interface UpdateTaskData {
+  title?: string;
+  description?: string;
+  points?: number;
+  is_daily_routine?: boolean;
+}
+```
+
+<ParamField body="title" type="string">
+  New display name for the task.
+</ParamField>
+
+<ParamField body="description" type="string">
+  New description text. Pass an empty string to clear it.
+</ParamField>
+
+<ParamField body="points" type="number">
+  New point value.
+</ParamField>
+
+<ParamField body="is_daily_routine" type="boolean">
+  Change whether the task is treated as a daily routine.
+</ParamField>
+
+<Note>
+  `challenge_template_id` is not included in `UpdateTaskData`. To reassign a task to a different challenge, delete and recreate it.
+</Note>
+
+## Delete a task
+
+Use `taskService.deleteTask(taskId)` to permanently remove a task. The function returns `void`.
+
+```typescript
+await taskService.deleteTask(42);
+```
+
+<Warning>
+  Deleting a task also removes all its completion records. This action cannot be undone.
+</Warning>
+
+In the UI, clicking the delete icon on a task card opens a confirmation modal (`DeleteTaskModal`) before the deletion is sent to the API.

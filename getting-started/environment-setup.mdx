@@ -1,0 +1,129 @@
+---
+title: "Environment setup"
+description: "Configure environment variables for local development and production deployments."
+---
+
+Mais Hábito uses [Vite's built-in environment variable system](https://vitejs.dev/guide/env-and-mode.html). All variables that the browser can access must be prefixed with `VITE_`. Variables without that prefix are not exposed to the client bundle.
+
+## Environment variables
+
+| Variable | Required | Description |
+|---|---|---|
+| `VITE_API_URL` | Yes | Base URL of the Mais Hábito REST API, including the `/api` path segment. |
+
+### VITE_API_URL
+
+This is the only environment variable the app requires. It is read at startup by `src/services/api.ts`, which creates the Axios instance used by every service:
+
+```typescript src/services/api.ts
+import axios from "axios";
+
+if (!import.meta.env.VITE_API_URL) {
+  throw new Error("VITE_API_URL is not defined in .env");
+}
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL,
+});
+```
+
+If the variable is missing, the app throws immediately before any component mounts. This is intentional — it prevents silent failures from misconfigured deploys.
+
+## Local development
+
+1. Copy the example file:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Set the variable to your local API address:
+
+   ```env .env
+   VITE_API_URL=http://localhost:3000/api
+   ```
+
+3. Start the dev server:
+
+   ```bash
+   npm run dev
+   ```
+
+<Tip>
+Vite automatically reloads the dev server when you change `.env` files. You do not need to restart `npm run dev` manually after editing environment variables.
+</Tip>
+
+## How the Axios interceptors use the base URL
+
+Every outbound request attaches the JWT from `localStorage`:
+
+```typescript src/services/api.ts
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
+```
+
+On a `401 Unauthorized` response, the interceptor clears the stored token and redirects to the login page — unless the user is already on an auth route (`/login`, `/signup`, or `/`):
+
+```typescript src/services/api.ts
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      const path = window.location.pathname;
+      const isAuthPage = path === "/login" || path === "/signup" || path === "/";
+      if (!isAuthPage) {
+        localStorage.removeItem("token");
+        sessionStorage.removeItem("_up");
+        window.location.href = "/";
+      }
+    }
+    return Promise.reject(error);
+  },
+);
+```
+
+This means you only need to set `VITE_API_URL` correctly — all authentication headers and session expiry are handled automatically.
+
+## Production build
+
+When you run `npm run build`, Vite inlines the values of all `VITE_` variables into the compiled JavaScript bundle at build time. Set the variable to your production API URL before building:
+
+```env .env.production
+VITE_API_URL=https://api.yourdomain.com/api
+```
+
+```bash
+npm run build
+```
+
+<Warning>
+Because `VITE_API_URL` is inlined at build time, you must rebuild the app whenever the API URL changes. There is no runtime config file — the value is baked into the bundle.
+</Warning>
+
+## Deploying to Vercel
+
+Vercel injects environment variables at build time, so you do not commit `.env.production` to your repository.
+
+<Steps>
+  <Step title="Open your Vercel project settings">
+    Navigate to **Settings → Environment Variables** in the Vercel dashboard.
+  </Step>
+  <Step title="Add the variable">
+    Set `VITE_API_URL` to your production API URL (for example, `https://api.yourdomain.com/api`) and assign it to the **Production** environment.
+  </Step>
+  <Step title="Redeploy">
+    Trigger a new deployment. Vercel passes the variable to Vite during the build step, and the app picks it up as `import.meta.env.VITE_API_URL`.
+  </Step>
+</Steps>
+
+<Note>
+Vercel also supports **Preview** and **Development** environment scopes. You can set a different `VITE_API_URL` for each scope to point preview deployments at a staging API.
+</Note>

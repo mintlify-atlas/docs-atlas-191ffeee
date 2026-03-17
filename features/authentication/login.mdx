@@ -1,0 +1,135 @@
+---
+title: "Login"
+description: "How users authenticate with email and password to access their Mais Hábito account."
+---
+
+The login page lets you sign in to an existing account. On success, your JWT is stored and you are redirected to the dashboard.
+
+## Login flow
+
+<Steps>
+  <Step title="Enter your credentials">
+    Fill in your email address and password on the login form at `/login`.
+  </Step>
+  <Step title="Client-side validation">
+    The form validates your input using Zod before making any network request. Errors are displayed inline beneath each field.
+  </Step>
+  <Step title="POST /auth/login">
+    `authService.login(email, password)` sends a `POST` request to `/auth/login` with your credentials.
+  </Step>
+  <Step title="Receive JWT">
+    The server responds with an `AuthResponse` containing a JWT and your user object.
+  </Step>
+  <Step title="Store credentials">
+    `setAuth(user, token)` saves the token and user to `localStorage` and updates `isAuthenticated` in the Zustand store.
+  </Step>
+  <Step title="Redirect to dashboard">
+    You are redirected to `/dashboard` and a success toast is shown.
+  </Step>
+</Steps>
+
+## Form fields
+
+<ParamField path="body.email" type="string" required>
+  A valid email address. Validated with `z.email()`.
+</ParamField>
+
+<ParamField path="body.password" type="string" required>
+  Your account password. Must be at least 6 characters.
+</ParamField>
+
+### Validation rules
+
+The form uses a Zod schema (`loginSchema`) to validate input before submission:
+
+```typescript
+// src/pages/auth/LoginPage.tsx
+const loginSchema = z.object({
+  email: z.email('Email inválido'),
+  password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
+});
+```
+
+| Field | Rule | Error message |
+|---|---|---|
+| `email` | Valid email format | `Email inválido` |
+| `password` | Minimum 6 characters | `A senha deve ter pelo menos 6 caracteres` |
+
+## authService.login
+
+`authService.login` posts your credentials to the API and returns an `AuthResponse`.
+
+```typescript
+// src/services/auth.service.ts
+login: async (email: string, password: string): Promise<AuthResponse> => {
+    const response = await api.post(`/auth/login`, {
+        email,
+        password
+    });
+    return response.data as AuthResponse;
+}
+```
+
+## AuthResponse type
+
+Both login and signup return the same response shape:
+
+```typescript
+// src/types/auth.types.ts
+export interface AuthResponse {
+    token: string;
+    user: {
+        id: string;
+        email: string;
+        name: string;
+    };
+}
+```
+
+<ResponseField name="token" type="string" required>
+  JWT used to authenticate subsequent requests. Stored in `localStorage` under the key `token`.
+</ResponseField>
+
+<ResponseField name="user" type="object" required>
+  <Expandable title="properties">
+    <ResponseField name="id" type="string" required>
+      Unique user identifier.
+    </ResponseField>
+    <ResponseField name="email" type="string" required>
+      The user's email address.
+    </ResponseField>
+    <ResponseField name="name" type="string" required>
+      The user's display name.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Error handling
+
+If login fails, the server error message is displayed inline on the form.
+
+```typescript
+// src/pages/auth/LoginPage.tsx
+} catch (err) {
+  if (axios.isAxiosError(err)) {
+    setError(err.response?.data?.error || 'Erro ao fazer login');
+  } else {
+    setError('Erro inesperado, tente novamente');
+  }
+}
+```
+
+<Warning>
+  The axios response interceptor does **not** redirect you away from `/login` on a 401 — the form shows the error message instead. Automatic redirect to `/` only happens on 401s from private routes.
+</Warning>
+
+Common error scenarios:
+
+| Cause | Displayed message |
+|---|---|
+| Wrong email or password | Server-provided `error` field, or `Erro ao fazer login` |
+| Non-Axios error (e.g. network failure) | `Erro inesperado, tente novamente` |
+
+<Tip>
+  Don't have an account yet? Go to the [sign-up page](/features/authentication/signup) to create one.
+</Tip>

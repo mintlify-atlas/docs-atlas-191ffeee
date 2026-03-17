@@ -1,0 +1,161 @@
+---
+title: "Profile"
+description: "View and update your account details, change your password, and sign out from the profile page."
+---
+
+The Profile page (`/profile`) lets you manage your personal information and account credentials. It displays your current stats and provides a form for updating your name, email, profile picture, and password.
+
+## What the profile page shows
+
+- Your avatar (profile picture or first-letter fallback)
+- Your display name and email address
+- An editable form for account details
+- A password change section
+- A sign-out button
+
+## Fetching your profile
+
+The page calls `userService.getProfile()` on mount to load your current data:
+
+```typescript
+import { userService } from '../services/user.service';
+
+const profile = await userService.getProfile();
+```
+
+This returns a `UserProfile` object:
+
+```typescript
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  profile_picture: string | null;
+  points: number;
+  current_streak: number;
+  max_streak: number;
+  created_at: string;
+  updated_at: string;
+}
+```
+
+<ResponseField name="id" type="string" required>
+  Unique identifier for your account.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Your display name, shown in the avatar section and used as a greeting on the dashboard.
+</ResponseField>
+
+<ResponseField name="email" type="string" required>
+  Your account email address.
+</ResponseField>
+
+<ResponseField name="profile_picture" type="string | null">
+  URL of your avatar image. When `null`, the UI shows the first letter of your name instead.
+</ResponseField>
+
+<ResponseField name="points" type="number" required>
+  Total XP accumulated. Read-only — updated by the API when you complete tasks.
+</ResponseField>
+
+<ResponseField name="current_streak" type="number" required>
+  Your current consecutive-day streak.
+</ResponseField>
+
+<ResponseField name="max_streak" type="number" required>
+  Your all-time longest streak.
+</ResponseField>
+
+## Updating your profile
+
+Call `userService.updateProfile(data)` to save changes. The function returns the updated `UserProfile`.
+
+```typescript
+const updated = await userService.updateProfile({
+  name: 'Rafael Moreira',
+  email: 'rafael@example.com',
+  profile_picture: 'https://example.com/avatar.png',
+});
+```
+
+### UpdateProfileData fields
+
+```typescript
+export interface UpdateProfileData {
+  name?: string;
+  profile_picture?: string | null;
+  email?: string;
+  currentPassword?: string;
+  newPassword?: string;
+}
+```
+
+<ParamField body="name" type="string">
+  Your updated display name.
+</ParamField>
+
+<ParamField body="email" type="string">
+  Your updated email address. Must be a valid email format.
+</ParamField>
+
+<ParamField body="profile_picture" type="string | null">
+  URL of your avatar image. Pass `null` to remove your current picture.
+</ParamField>
+
+<ParamField body="currentPassword" type="string">
+  Your existing password. Required when you also send `newPassword`.
+</ParamField>
+
+<ParamField body="newPassword" type="string">
+  Your new password. Must be at least 6 characters.
+</ParamField>
+
+## Changing your password
+
+To change your password, fill in both the **Senha atual** and **Nova Senha** fields on the profile form, then click **Salvar**. The `ProfilePage` component only includes `currentPassword` and `newPassword` in the API call when `newPassword` is non-empty:
+
+```typescript
+const updateData: UpdateProfileData = {
+  name: data.name,
+  email: data.email,
+  profile_picture: data.profile_picture || null,
+};
+
+// Only attach password fields when a new password is provided
+if (data.newPassword && data.newPassword.length > 0) {
+  updateData.currentPassword = data.currentPassword;
+  updateData.newPassword = data.newPassword;
+}
+
+const updatedProfile = await userService.updateProfile(updateData);
+```
+
+<Warning>
+  Your current password is required to set a new one. If you provide only `newPassword` without `currentPassword`, the API will reject the request.
+</Warning>
+
+## Update your profile step by step
+
+<Steps>
+  <Step title="Navigate to /profile">
+    Open the Profile page from the bottom navigation bar.
+  </Step>
+  <Step title="Edit the form fields">
+    Update your name, email, or profile picture URL in the **Editar Perfil** card.
+  </Step>
+  <Step title="Change your password (optional)">
+    Enter your current password in **Senha atual** and your new password in **Nova Senha**. Leave both blank to keep your existing password.
+  </Step>
+  <Step title="Click Salvar">
+    The app calls `userService.updateProfile()`, updates the global auth store with your new name and email, and shows a success toast.
+  </Step>
+</Steps>
+
+## Signing out
+
+The **Sair da conta** button at the bottom of the profile page calls `logout()` from the auth store, which clears the JWT token and redirects you to the login screen.
+
+<Note>
+  Signing out clears the in-memory `appCache` along with the auth token, so the next login always fetches fresh data from the API.
+</Note>

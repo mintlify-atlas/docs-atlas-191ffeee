@@ -1,0 +1,98 @@
+---
+title: "Challenges"
+description: "Understand the two-layer challenge system: reusable templates and active user instances."
+---
+
+Challenges in Mais Hábito are structured as two distinct objects: a **ChallengeTemplate** (the blueprint) and a **UserChallenge** (your active run of that blueprint). This separation lets the same challenge be attempted by any user, and allows you to retry a challenge after completing or abandoning it.
+
+## TypeScript interfaces
+
+```typescript src/types/challenge.types.ts
+export interface ChallengeTemplate {
+  id: number;
+  title: string;
+  description: string;
+  duration_days: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserChallenge {
+  id: number;
+  user_id: string;
+  template_id: number;
+  status: 'ACTIVE' | 'COMPLETED' | 'ABANDONED';
+  start_date: string;
+  completed_at: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+  template?: ChallengeTemplate;
+}
+```
+
+## ChallengeTemplate — the blueprint
+
+A `ChallengeTemplate` defines what a challenge is. It is a reusable record that anyone can accept. You can create your own templates or browse the catalogue.
+
+| Field | Type | Description |
+|---|---|---|
+| `title` | `string` | The challenge name shown in the catalogue (e.g., "Academia 30 Dias"). |
+| `description` | `string` | A longer explanation of what the challenge involves. |
+| `duration_days` | `number` | How many consecutive days the challenge runs. |
+| `created_at` | `string` | ISO 8601 timestamp of when the template was created. |
+
+## UserChallenge — your active run
+
+When you accept a `ChallengeTemplate`, the API creates a `UserChallenge` record tied to your account. This is the object that tracks your personal progress through the challenge.
+
+| Field | Type | Description |
+|---|---|---|
+| `user_id` | `string` | Your account ID. |
+| `template_id` | `number` | The `ChallengeTemplate` this run is based on. |
+| `status` | `'ACTIVE' \| 'COMPLETED' \| 'ABANDONED'` | Current state of this run. |
+| `start_date` | `string` | ISO 8601 date when you accepted the challenge. |
+| `completed_at` | `string \| null` | Set when `status` transitions to `COMPLETED`. `null` otherwise. |
+| `notes` | `string \| null` | Your progress journal — freeform text updated via the Diário de Bordo feature. |
+| `template` | `ChallengeTemplate \| undefined` | The parent template, optionally included by the API. |
+
+## Challenge lifecycle
+
+<Steps>
+  <Step title="Browse the catalogue">
+    Open the **Challenges** page to see all available `ChallengeTemplate` records. Each card shows the title, description, and duration in days.
+  </Step>
+  <Step title="Accept a challenge">
+    Clicking **Accept** creates a `UserChallenge` with `status: 'ACTIVE'` and records today as `start_date`. You can only have one active challenge at a time — the dashboard highlights it in the **Desafio Atual** panel.
+  </Step>
+  <Step title="Log progress with notes">
+    While a challenge is active, you can add notes via the **Diário de Bordo** (progress journal). Notes are stored in the `notes` field of your `UserChallenge` and let you reflect on what is working.
+  </Step>
+  <Step title="Complete or abandon">
+    When you finish all `duration_days` days, the challenge transitions to `status: 'COMPLETED'` and `completed_at` is set to the current timestamp. If you decide to stop early, you can abandon it — the status becomes `'ABANDONED'` and the run is closed without a reward.
+  </Step>
+</Steps>
+
+## Status transitions
+
+```
+ACTIVE ──── complete ────► COMPLETED
+  │
+  └────── abandon ────────► ABANDONED
+```
+
+<Warning>
+Abandoning a challenge cannot be undone. The `UserChallenge` record remains in your history with `status: 'ABANDONED'`, but you can always accept the same template again to start a fresh run.
+</Warning>
+
+## XP rewards on completion
+
+Completing a challenge (`status: 'COMPLETED'`) adds bonus points to your `UserProfile.points` total. The exact reward is determined by the API based on the challenge's `duration_days` — longer challenges yield more points.
+
+<Tip>
+Use the `notes` field actively during a challenge run. Logging your progress each day reinforces the habit loop and gives you a written record to review after completion.
+</Tip>
+
+## Relationship to the dashboard
+
+The dashboard loads your active `UserChallenge` via `challengeService.getActiveChallenge()`. If a challenge is active, it appears in the **Desafio Atual** card with the template title and start date. A **Ver Detalhes** button navigates you to the full challenges page. See [Dashboard](/concepts/dashboard) for how this fits into the overall data flow.

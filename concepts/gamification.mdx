@@ -1,0 +1,105 @@
+---
+title: "Gamification"
+description: "How Mais Hábito uses points, streaks, and levels to keep you motivated."
+---
+
+Mais Hábito is built around a gamification layer that turns daily habits into a progression system. Every action you take — completing a task, finishing a challenge — feeds into metrics that the dashboard surfaces in real time.
+
+## Core concepts
+
+<CardGroup cols={2}>
+  <Card title="Points" icon="circle-plus">
+    Earned by completing tasks. Each task has a configurable `points` value. Points accumulate on your profile permanently.
+  </Card>
+  <Card title="Streak (Sequência)" icon="flame">
+    Counts consecutive days on which you complete at least one task. Breaks if you miss a day.
+  </Card>
+  <Card title="Max streak" icon="chart-line">
+    The longest streak you have ever reached. Displayed alongside your current streak as a personal best.
+  </Card>
+  <Card title="Challenge XP" icon="trophy">
+    Completing a `UserChallenge` rewards bonus points and reinforces long-term commitment.
+  </Card>
+</CardGroup>
+
+## The UserProfile type
+
+All gamification state for a user lives in the `UserProfile` object returned by the API:
+
+```typescript src/types/user.types.ts
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  profile_picture: string | null;
+  points: number;           // total accumulated points
+  current_streak: number;   // consecutive active days
+  max_streak: number;       // all-time best streak
+  created_at: string;
+  updated_at: string;
+}
+```
+
+`points`, `current_streak`, and `max_streak` are the three fields the dashboard reads to render the gamification stats panel.
+
+## Points
+
+Points are the primary currency of Mais Hábito. You earn them by:
+
+- **Completing a task** — each `Task` carries a `points` field you set when you create it. Higher-effort habits are worth more.
+- **Completing a challenge** — finishing a `UserChallenge` (reaching `status: 'COMPLETED'`) adds a reward to your total.
+
+Points never decrease. They accumulate as a permanent record of your progress.
+
+## Daily streak (Sequência)
+
+Your streak (`current_streak`) increments each day you mark at least one task complete. If you go a full calendar day without any completion, the streak resets to zero.
+
+The dashboard displays:
+
+| Field | What it shows |
+|---|---|
+| `current_streak` | Days in your active run |
+| `max_streak` | Your all-time personal best |
+
+Streaks are shown in the **Sequência** score card on the dashboard with a flame icon, making the cost of breaking the chain visible every time you open the app.
+
+## How the dashboard reads gamification data
+
+When the dashboard loads, it calls `userService.getProfile()` alongside the active challenge and task list in a single parallel fetch:
+
+```typescript src/pages/dashboard/DashboardPage.tsx
+const [profileData, challengeData, tasksData] = await Promise.all([
+  userService.getProfile(),
+  challengeService.getActiveChallenge().catch(() => null),
+  taskService.listMyTasks().catch(() => [] as TaskWithCount[])
+]);
+```
+
+After you complete a task, the dashboard silently re-fetches all three resources so the points and streak counters update without a full page reload:
+
+```typescript src/pages/dashboard/DashboardPage.tsx
+const handleCompleteTask = async (taskId: number) => {
+  try {
+    await taskService.completeTask(taskId);
+    // Re-fetch to update points, streak, and task completion count
+    fetchData(true);
+  } catch {
+    // silent fail
+  }
+};
+```
+
+## Motivation model
+
+The system is designed around a feedback loop:
+
+1. You create tasks with meaningful point values.
+2. You complete tasks daily to earn points and extend your streak.
+3. The dashboard immediately reflects both metrics, rewarding the action.
+4. A broken streak is visible and jarring, which motivates you to maintain consistency.
+5. Long-term challenges layer on top, providing multi-week goals that sustain engagement beyond individual task completions.
+
+<Tip>
+Assign higher `points` values to habits that are harder for you to maintain. This makes the points leaderboard on your dashboard a more accurate reflection of effort, not just volume.
+</Tip>

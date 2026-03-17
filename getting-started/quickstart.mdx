@@ -1,0 +1,86 @@
+---
+title: "Quickstart"
+description: "Get Mais Hábito running locally in minutes."
+---
+
+This guide walks you through cloning the repository, installing dependencies, and starting the development server so you can explore Mais Hábito on your machine.
+
+<Note>
+Mais Hábito is a frontend-only application. It connects to the [Mais Hábito API](https://github.com/RafaeltiMoreira/mais-habito-api). Make sure the API server is running before you start the frontend — the app will throw an error at startup if `VITE_API_URL` is unreachable.
+</Note>
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org/) 18 or later
+- npm (bundled with Node.js)
+- The Mais Hábito API running and accessible
+
+## Steps
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/RafaeltiMoreira/mais-habito-web.git
+    cd mais-habito-web
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    <CodeGroup>
+      ```bash npm
+      npm install
+      ```
+
+      ```bash yarn
+      yarn install
+      ```
+
+      ```bash pnpm
+      pnpm install
+      ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Copy the environment file">
+    ```bash
+    cp .env.example .env
+    ```
+
+    This creates a `.env` file at the project root with the required environment variable template.
+  </Step>
+
+  <Step title="Configure VITE_API_URL">
+    Open `.env` and set the URL to your running API instance:
+
+    ```env
+    VITE_API_URL=http://localhost:3000/api
+    ```
+
+    Change the host and port to match wherever your API is running. See [Environment setup](/getting-started/environment-setup) for full details on this variable and production configuration.
+  </Step>
+
+  <Step title="Start the development server">
+    ```bash
+    npm run dev
+    ```
+
+    Vite starts the app at `http://localhost:5173`. Open that URL in your browser and you should see the Mais Hábito login screen.
+  </Step>
+</Steps>
+
+## What to do next
+
+<CardGroup cols={2}>
+  <Card title="Environment setup" icon="gear" href="/getting-started/environment-setup">
+    Learn about all environment variables, how Vite loads them, and how to configure the app for production.
+  </Card>
+  <Card title="Gamification" icon="star" href="/concepts/gamification">
+    Understand the XP, levels, and streak system that drives the app.
+  </Card>
+  <Card title="Challenges" icon="trophy" href="/concepts/challenges">
+    Learn how challenge templates and active user challenges work.
+  </Card>
+  <Card title="Tasks" icon="check" href="/concepts/tasks">
+    See how tasks earn points and how daily routines differ from one-off tasks.
+  </Card>
+</CardGroup>

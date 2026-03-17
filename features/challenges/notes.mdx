@@ -1,0 +1,101 @@
+---
+title: "Progress journal"
+description: "Add daily notes to your active challenge to document what you did and how you felt."
+---
+
+The **progress journal** lets you add timestamped entries to your active challenge. Each entry records what you did on a given day so you can look back on your journey over the course of the challenge.
+
+## How notes work
+
+The `notes` field on a `UserChallenge` stores your journal as a JSON-serialized array of log entries. Each time you add a new note, the app prepends a new entry with a unique ID, the current timestamp, and your text, then saves the entire array back to the server.
+
+```typescript
+// The DailyLog structure used internally
+interface DailyLog {
+  id: string;       // UUID generated client-side
+  date: string;     // ISO 8601 timestamp
+  text: string;     // Your note (max 500 characters)
+}
+```
+
+The journal is stored on `UserChallenge.notes` as:
+
+```typescript
+notes?: string | null;
+```
+
+Entries are displayed in reverse chronological order — the most recent entry appears at the top.
+
+<Note>
+  Each journal entry has a maximum length of 500 characters.
+</Note>
+
+## Add a journal entry
+
+<Steps>
+  <Step title="Open the Challenges page">
+    Your active challenge card is displayed at the top of the page under **Desafio Ativo**.
+  </Step>
+  <Step title="Write your entry">
+    Type your note in the **Diário do Desafio** text area. Describe what you did, how you felt, or any obstacles you encountered.
+  </Step>
+  <Step title="Save the entry">
+    Click **Registrar Progresso**. The entry is saved to the server and appears in the journal list immediately.
+  </Step>
+</Steps>
+
+To add or update notes programmatically:
+
+```typescript
+const updated = await challengeService.updateNotes(id, notes);
+// Returns: UserChallenge
+```
+
+<ParamField body="id" type="number" required>
+  The `id` of the `UserChallenge` to update.
+</ParamField>
+
+<ParamField body="notes" type="string" required>
+  The full serialized journal string. When adding a new entry, the app prepends the new `DailyLog` to the existing array and passes the serialized result.
+</ParamField>
+
+## Best practices
+
+<Tip>
+  Write your entry at the end of each day while the session is still fresh. Even a short sentence is more useful than nothing.
+</Tip>
+
+- **Be specific.** Note what you actually did, not just whether you succeeded. "Ran 5 km in the rain" is more useful than "Did it."
+- **Record how you felt.** Motivation and energy levels give context to your progress over time.
+- **Note obstacles.** If you nearly skipped the day, write down what almost stopped you. This helps you identify patterns.
+- **Keep it honest.** The journal is for you. Accurate notes are more valuable than optimistic ones.
+
+## Example entries
+
+Below are realistic journal entries for a 30-day fitness challenge:
+
+```text
+Day 1
+First session done. Went to the gym at 7 am before work. Only 40 minutes but I showed up. 
+Feel nervous about keeping this up for 30 days.
+
+Day 7
+One week in. Missed the gym yesterday (late meeting) but made it up this morning. 
+Learning that the morning slot is the only one that actually works for me.
+
+Day 14
+Halfway there. Sleep has improved noticeably. Still hard to get out of bed but 
+once I'm there I'm fine. Increased weights on squats today.
+
+Day 21
+Three weeks done. The habit feels more automatic now. 
+I stopped negotiating with myself about whether to go — I just go.
+
+Day 30
+Challenge complete. 30 days, 27 sessions (missed 3). 
+Body feels stronger and the morning routine is locked in. Starting the next challenge next week.
+```
+
+<Info>
+  Your journal entries are preserved even after you complete or abandon the challenge. You can review them in your challenge history.
+</Info>

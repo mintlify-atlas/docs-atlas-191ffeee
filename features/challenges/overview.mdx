@@ -1,0 +1,48 @@
+---
+title: "Challenges overview"
+description: "How the two-layer challenge system works in Mais Hábito: templates as blueprints and user challenges as active instances."
+---
+
+Challenges are timed consistency tracks that you commit to and track over days or weeks. The system is built on two layers: a **template** that defines what the challenge is, and a **user challenge** that records your personal attempt at it.
+
+## The two-layer model
+
+Every challenge in Mais Hábito is made up of two separate objects:
+
+| Layer | Type | Purpose |
+|---|---|---|
+| Blueprint | `ChallengeTemplate` | Defines the title, description, and duration. Shared across all users. |
+| Active instance | `UserChallenge` | Records your personal attempt: start date, status, notes, and completion. |
+
+You create or browse **templates** in the catalog, then **accept** one to create your own `UserChallenge` instance. You can only have one active challenge at a time.
+
+## Full lifecycle
+
+<Steps>
+  <Step title="Create or browse templates">
+    Open the challenge catalog to see existing templates, or create a new one by providing a title, description, and duration in days.
+  </Step>
+  <Step title="Accept a challenge">
+    Select a template from the catalog and accept it. This creates a `UserChallenge` with status `ACTIVE` and records your `start_date`.
+  </Step>
+  <Step title="Track progress">
+    Use the progress journal to add daily notes. Your active challenge card shows how many days have elapsed out of the total duration.
+  </Step>
+  <Step title="Complete or abandon">
+    When you finish, mark the challenge as complete to earn XP and update your streak. If you need to stop early, you can abandon the challenge — this cannot be undone.
+  </Step>
+</Steps>
+
+## Explore the challenge system
+
+<CardGroup cols={3}>
+  <Card title="Templates" icon="layer-group" href="/features/challenges/templates">
+    Create and manage challenge blueprints in the catalog.
+  </Card>
+  <Card title="Active challenges" icon="circle-play" href="/features/challenges/active-challenges">
+    Accept a challenge, track your progress, and mark it complete or abandoned.
+  </Card>
+  <Card title="Progress journal" icon="book-open" href="/features/challenges/notes">
+    Write daily notes on your active challenge to document your journey.
+  </Card>
+</CardGroup>

@@ -1,0 +1,121 @@
+---
+title: "Folder structure"
+description: "Directory layout of the Mais Hábito source code and what belongs in each folder."
+---
+
+All application code lives under `src/`. The structure mirrors a clean separation between UI, data, and configuration.
+
+## Directory tree
+
+```
+src/
+├── components/
+├── pages/
+│   ├── auth/
+│   ├── challenges/
+│   ├── tasks/
+│   ├── dashboard/
+│   ├── home/
+│   └── profile/
+├── services/
+├── store/
+├── styles/
+├── types/
+└── routes/
+```
+
+## Folder descriptions
+
+<AccordionGroup>
+  <Accordion title="components/">
+    Shared, reusable UI components that are not tied to a single page. This includes the application layout primitives:
+
+    - `layout/PrivateLayout.tsx` — wrapper rendered around every authenticated page; mounts the `Sidebar` and `BottomNav`.
+    - `layout/Sidebar.tsx` — collapsible desktop navigation.
+    - `layout/BottomNav.tsx` — mobile tab bar.
+    - `ErrorBoundary.tsx` — class component that catches render errors and shows a recovery UI.
+
+    If a component is used by more than one page, it belongs here. If it is used by exactly one page, co-locate it with that page instead.
+  </Accordion>
+
+  <Accordion title="pages/">
+    One subfolder per application domain. Each subfolder contains:
+
+    - A top-level page component (`DashboardPage.tsx`)
+    - A co-located styles file (`DashboardPage.styles.ts`)
+    - An optional `components/` subfolder for modals, cards, and list items that belong exclusively to that page
+
+    | Subfolder | Contents |
+    |---|---|
+    | `auth/` | `LoginPage`, `SignupPage` |
+    | `challenges/` | Catalogue, active challenge card, create/abandon/edit modals |
+    | `tasks/` | Full CRUD task list and task item component |
+    | `dashboard/` | Gamified progress overview with XP and streak metrics |
+    | `home/` | Public landing page (`/`) |
+    | `profile/` | Profile view and password change |
+  </Accordion>
+
+  <Accordion title="services/">
+    The REST communication layer. Each file is a plain object whose methods call the shared Axios instance and return typed responses:
+
+    - `api.ts` — the configured Axios instance with JWT and 401 interceptors
+    - `auth.service.ts` — login and signup
+    - `challenge.service.ts` — challenge templates and user challenges
+    - `task.service.ts` — task CRUD and completions
+    - `user.service.ts` — profile read and update
+
+    Service files contain no UI logic. They are the only layer that imports from `api.ts`.
+  </Accordion>
+
+  <Accordion title="store/">
+    Zustand stores for global state:
+
+    - `authStore.ts` — authentication session (user, token, `isAuthenticated`)
+    - `themeStore.ts` — current theme preference (`isDark`)
+    - `appCache.ts` — in-memory cache for dashboard metrics, challenges, tasks, and profile data
+  </Accordion>
+
+  <Accordion title="styles/">
+    Global styling primitives:
+
+    - `theme.ts` — `darkTheme`, `lightTheme`, and the `Theme` type export
+    - `GlobalStyle.ts` — CSS reset and base body/font styles via `createGlobalStyle`
+  </Accordion>
+
+  <Accordion title="types/">
+    TypeScript interfaces and type aliases for API DTOs:
+
+    - `auth.types.ts`
+    - `challenge.types.ts`
+    - `task.types.ts`
+    - `user.types.ts`
+    - `styled.d.ts` — module augmentation that extends styled-components' `DefaultTheme` with the project's `Theme` type
+  </Accordion>
+
+  <Accordion title="routes/">
+    - `AppRoutes.tsx` — all route definitions, `PrivateRoute`, and `PublicRoute` guard components
+  </Accordion>
+</AccordionGroup>
+
+## Co-located page components pattern
+
+Page-specific modals and sub-components live next to the page that owns them:
+
+```
+src/pages/challenges/
+├── ChallengesPage.tsx
+├── ChallengesPage.styles.ts
+└── components/
+    ├── ActiveChallengeCard.tsx
+    ├── ActiveChallengeCard.styles.ts
+    ├── AbandonChallengeModal.tsx
+    ├── CreateChallengeModal.tsx
+    ├── CreateTaskModal.tsx
+    ├── DeleteTaskModal.tsx
+    ├── EditTaskModal.tsx
+    └── TaskItem.tsx
+```
+
+<Tip>
+  Keep modals and domain-specific cards inside the page folder that owns them. Only promote a component to `src/components/` when a second page needs to use it.
+</Tip>

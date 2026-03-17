@@ -1,0 +1,174 @@
+---
+title: "Active challenges"
+description: "Accept a challenge from the catalog, track your progress day by day, and mark it complete or abandoned."
+---
+
+A **user challenge** (`UserChallenge`) is your personal instance of a challenge template. When you accept a template, the app creates a `UserChallenge` that records when you started, how far you have progressed, and whether you completed or abandoned it.
+
+## The `UserChallenge` type
+
+```typescript
+export interface UserChallenge {
+  id: number;
+  user_id: string;
+  template_id: number;
+  status: 'ACTIVE' | 'COMPLETED' | 'ABANDONED';
+  start_date: string;
+  completed_at: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+  template?: ChallengeTemplate;
+}
+```
+
+<ResponseField name="id" type="number" required>
+  Unique identifier for this user challenge instance.
+</ResponseField>
+
+<ResponseField name="user_id" type="string" required>
+  The ID of the user who owns this challenge.
+</ResponseField>
+
+<ResponseField name="template_id" type="number" required>
+  The ID of the `ChallengeTemplate` this instance was created from.
+</ResponseField>
+
+<ResponseField name="status" type="'ACTIVE' | 'COMPLETED' | 'ABANDONED'" required>
+  Current state of the challenge. Starts as `ACTIVE` and transitions to either `COMPLETED` or `ABANDONED`.
+</ResponseField>
+
+<ResponseField name="start_date" type="string" required>
+  ISO 8601 timestamp of when you accepted the challenge.
+</ResponseField>
+
+<ResponseField name="completed_at" type="string | null" required>
+  ISO 8601 timestamp of when the challenge ended. `null` while the challenge is still active.
+</ResponseField>
+
+<ResponseField name="notes" type="string | null">
+  JSON-serialized array of daily log entries. See [Progress journal](/features/challenges/notes).
+</ResponseField>
+
+<ResponseField name="template" type="ChallengeTemplate">
+  <Expandable title="ChallengeTemplate properties">
+    <ResponseField name="id" type="number">Template identifier.</ResponseField>
+    <ResponseField name="title" type="string">Challenge title.</ResponseField>
+    <ResponseField name="description" type="string">Challenge description.</ResponseField>
+    <ResponseField name="duration_days" type="number">Total length of the challenge in days.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Status lifecycle
+
+```
+ACTIVE  ──→  COMPLETED
+        ──→  ABANDONED
+```
+
+A `UserChallenge` begins as `ACTIVE` the moment you accept a template. From there it can only move to `COMPLETED` (via `completeChallenge`) or `ABANDONED` (via `abandonChallenge`). There is no way to revert a completed or abandoned challenge back to active.
+
+<Note>
+  You can only have one `ACTIVE` challenge at a time. Accept a new challenge only after your current one is completed or abandoned.
+</Note>
+
+## Accept a challenge
+
+<Steps>
+  <Step title="Open the New Challenge modal">
+    Click **Novo Desafio** on the Challenges page.
+  </Step>
+  <Step title="Pick a template">
+    Select a template from the dropdown. Each option shows the title and duration in days.
+  </Step>
+  <Step title="Confirm">
+    Click **Aceitar Desafio**. Your active challenge card appears at the top of the Challenges page.
+  </Step>
+</Steps>
+
+To accept a challenge programmatically:
+
+```typescript
+const userChallenge = await challengeService.acceptChallenge(templateId);
+// Returns: UserChallenge (status: 'ACTIVE')
+```
+
+<ParamField body="templateId" type="number" required>
+  The `id` of the `ChallengeTemplate` to accept.
+</ParamField>
+
+## View your active challenge
+
+The active challenge card shows:
+
+- The challenge title and description
+- The current day out of the total duration (e.g., "Dia 5 de 30")
+- Your progress journal entries
+- Buttons to complete or abandon the challenge
+
+To fetch your active challenge programmatically:
+
+```typescript
+const active = await challengeService.getActiveChallenge();
+// Returns: UserChallenge
+```
+
+## List all your challenges
+
+The **Histórico** section on the Challenges page shows all your past challenges — both completed and abandoned.
+
+```typescript
+const all = await challengeService.listMyChallenges();
+// Returns: UserChallenge[]
+
+const history = all.filter(
+  (c) => c.status === 'COMPLETED' || c.status === 'ABANDONED'
+);
+```
+
+## Complete a challenge
+
+When you finish the challenge, click **Completar Desafio** on the active challenge card.
+
+```typescript
+const result = await challengeService.completeChallenge(id);
+// Returns: { message: string; challenge: UserChallenge }
+```
+
+<ParamField body="id" type="number" required>
+  The `id` of the `UserChallenge` to complete.
+</ParamField>
+
+Completing a challenge:
+
+- Sets `status` to `COMPLETED`
+- Records `completed_at` with the current timestamp
+- Awards XP to your profile
+- Updates your streak
+
+## Abandon a challenge
+
+If you need to stop before finishing, click **Abandonar** on the active challenge card and confirm the modal.
+
+```typescript
+const result = await challengeService.abandonChallenge(id);
+// Returns: { message: string; challenge: UserChallenge }
+```
+
+<ParamField body="id" type="number" required>
+  The `id` of the `UserChallenge` to abandon.
+</ParamField>
+
+<Warning>
+  Abandoning a challenge is permanent. You cannot resume progress. If you want to try the same challenge again, accept the template to start a new instance.
+</Warning>
+
+## Service reference
+
+| Method | Signature | Returns |
+|---|---|---|
+| Accept challenge | `acceptChallenge(templateId: number)` | `Promise<UserChallenge>` |
+| Get active challenge | `getActiveChallenge()` | `Promise<UserChallenge>` |
+| List my challenges | `listMyChallenges()` | `Promise<UserChallenge[]>` |
+| Complete challenge | `completeChallenge(id: number)` | `Promise<{ message: string; challenge: UserChallenge }>` |
+| Abandon challenge | `abandonChallenge(id: number)` | `Promise<{ message: string; challenge: UserChallenge }>` |

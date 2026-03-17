@@ -1,0 +1,117 @@
+---
+title: "Dashboard"
+description: "What the gamified dashboard shows and how data flows from the API to the UI."
+---
+
+The dashboard is the home screen of Mais Hábito. It aggregates your profile metrics, active challenge, and top tasks into a single view designed to give you an at-a-glance picture of your progress and motivate action.
+
+## What the dashboard displays
+
+<CardGroup cols={2}>
+  <Card title="Points" icon="circle-plus">
+    Your total accumulated `points` from the `UserProfile`. Displayed in the **Seus pontos** score card.
+  </Card>
+  <Card title="Streak (Sequência)" icon="flame">
+    Your `current_streak` (active consecutive days) and `max_streak` (all-time best) from `UserProfile`.
+  </Card>
+  <Card title="Active challenge" icon="trophy">
+    The title and start date of your current `UserChallenge`, if one is active. Links through to the full challenges page.
+  </Card>
+  <Card title="Top tasks" icon="list-checks">
+    The first three tasks from your list, shown as completable cards with point values. Marks daily routines as done once completed today.
+  </Card>
+</CardGroup>
+
+## Data flow
+
+The dashboard fetches all three data sources in parallel on mount using `Promise.all`:
+
+```typescript src/pages/dashboard/DashboardPage.tsx
+const [profileData, challengeData, tasksData] = await Promise.all([
+  userService.getProfile(),
+  challengeService.getActiveChallenge().catch(() => null),
+  taskService.listMyTasks().catch(() => [] as TaskWithCount[])
+]);
+```
+
+Each result is stored in the `useAppCache` Zustand store:
+
+```typescript src/pages/dashboard/DashboardPage.tsx
+cache.setProfile(profileData);
+cache.setChallenges({ activeUserChallenge: challengeData });
+cache.setDashboard({ dashboardTasks: tasksData.slice(0, 3) });
+```
+
+On subsequent visits within the same session, the dashboard reads from the cache first and fetches in the background (`silent = true`), avoiding a loading flash:
+
+```typescript src/pages/dashboard/DashboardPage.tsx
+const hasCache = 
+  cache.profile !== null || 
+  cache.activeUserChallenge !== null || 
+  cache.dashboardTasks.length > 0;
+
+const [loading, setLoading] = useState(!hasCache);
+```
+
+## Profile and gamification stats
+
+The score row at the top of the dashboard reads directly from the `UserProfile` object:
+
+| UI element | Source field |
+|---|---|
+| **Seus pontos** value | `profile.points` |
+| **Sequência** value | `profile.current_streak` |
+| **Max** label | `profile.max_streak` |
+
+See [Gamification](/concepts/gamification) for how these values change over time.
+
+## Active challenge panel
+
+If `challengeService.getActiveChallenge()` returns a `UserChallenge` with `status: 'ACTIVE'`, the dashboard renders a **Desafio Atual** card showing:
+
+- The template title (`challenge.template?.title`)
+- The start date formatted as a locale string
+- A **Ver Detalhes** button that navigates to `/challenges`
+
+If no challenge is active, the panel shows an empty state with a prompt to explore the challenge catalogue.
+
+## Task cards
+
+The dashboard shows up to three `TaskWithCount` records. Each card displays:
+
+- Task title and description
+- A `+{points}PTS` badge
+- A **Concluir** button
+
+For daily routine tasks (`is_daily_routine: true`), the button disables once `completion_count > 0` for the current day:
+
+```typescript src/pages/dashboard/DashboardPage.tsx
+const isCompleted = completion_count > 0 && task.is_daily_routine;
+```
+
+Completing a task triggers a silent re-fetch of all dashboard data so points and streak update immediately without a loading state.
+
+## Live updates after task completion
+
+When you click **Concluir**, the flow is:
+
+<Steps>
+  <Step title="API call">
+    `taskService.completeTask(taskId)` posts a completion record to the API, which increments `points` and recalculates `current_streak` server-side.
+  </Step>
+  <Step title="Silent re-fetch">
+    The dashboard calls `fetchData(true)` — the `true` flag skips the loading spinner — and re-fetches profile, challenge, and tasks in parallel.
+  </Step>
+  <Step title="Cache update">
+    The fresh API responses overwrite the cache values in `useAppCache`.
+  </Step>
+  <Step title="Re-render">
+    React re-renders the score row and task cards with updated `points`, `current_streak`, and `completion_count` values.
+  </Step>
+</Steps>
+
+## Relationship to other concepts
+
+- **[Gamification](/concepts/gamification)** — explains the `points`, `current_streak`, and `max_streak` fields in depth.
+- **[Challenges](/concepts/challenges)** — covers `UserChallenge` and the lifecycle that produces the **Desafio Atual** panel.
+- **[Tasks](/concepts/tasks)** — covers `Task`, `TaskWithCount`, and the `is_daily_routine` flag that controls button state.
